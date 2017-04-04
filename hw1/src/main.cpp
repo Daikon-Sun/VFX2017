@@ -65,5 +65,6 @@ int main (int argc, char* argv[]) {
   // tonemap(f, m, a ,c)
   TONEMAP tonemap(f, m, a ,c);
   tonemap.process(hdr, ldr);
+  imwrite(out_jpg_file, ldr);
   show(ldr);
 }

@@ -1,10 +1,10 @@
 #include "mtb.hpp"
 
-void mtb::process(vector<Mat>& res, int max_level, int max_denoise) {
-  int num = (int)_pics.size();
-  _bi_pics.resize(num); //0-or-255 image after thresholding
-  _masks.resize(num); //mask to de-noise
-  for(int i = 0; i<num; ++i) {
+void MTB::process(vector<Mat>& res, int max_level, int max_denoise) {
+  int pics_num = (int)_pics.size();
+  _bi_pics.resize(pics_num); //0-or-255 image after thresholding
+  _masks.resize(pics_num); //mask to de-noise
+  for(int i = 0; i<pics_num; ++i) {
     _bi_pics[i].resize(max_level);
     _masks[i].resize(max_level);
     Mat pic = _pics[i].clone();
@@ -14,13 +14,26 @@ void mtb::process(vector<Mat>& res, int max_level, int max_denoise) {
       transform_bi(pic, _bi_pics[i][j], _masks[i][j], max_denoise);
     }
   }
-  vector< pair<int, int> > offsets(num);
-  for(int i = 1; i<num; ++i) {
-    offsets[i] = align(i, 0, max_level);
-    cerr << offsets[i].first << " " << offsets[i].second << endl;
+  vector< pair<int, int> > offsets(pics_num);
+  for(int i = 1; i<pics_num; ++i) offsets[i] = align(i, 0, max_level);
+  int minc, minr, maxc, maxr, cols = _pics[0].cols, rows = _pics[0].rows;
+  minc = minr = maxc = maxr = 0;
+  for(auto p:offsets) {
+    minc = min(minc, p.first);
+    minr = min(minr, p.second);
+    maxc = max(maxc, p.first);
+    maxr = max(maxr, p.second);
+  }
+  res.resize(pics_num);
+  for(int i = 0; i<pics_num; ++i) {
+    int Dc, Dr; tie(Dc, Dr) = offsets[i];
+    int c1 = maxc-Dc, c2 = cols+minc-Dc;
+    int r1 = maxr-Dr, r2 = rows+minr-Dr;
+    Rect roi(c1, r1, c2-c1, r2-r1);
+    res[i] = _pics[i](roi).clone();
   }
 }
-void mtb::transform_bi(const Mat& m, Mat& bi, Mat& de, int max_denoise) {
+void MTB::transform_bi(const Mat& m, Mat& bi, Mat& de, int max_denoise) {
   cvtColor(m, bi, COLOR_BGR2GRAY);
   vector<uchar> all_vals;
   CV_Assert(bi.isContinuous());
@@ -34,17 +47,17 @@ void mtb::transform_bi(const Mat& m, Mat& bi, Mat& de, int max_denoise) {
   de = upp+low;
   threshold(bi, bi, median, 255, THRESH_BINARY);
 }
-void mtb::shift(Mat& m, Mat& dst, const pair<int, int>& diff) {
+void MTB::shift(Mat& m, Mat& dst, const pair<int, int>& diff) {
   const int& Dc = diff.first;
   const int& Dr = diff.second;
   int c1 = (Dc<0 ? -Dc : 0);
   int r1 = (Dr<0 ? -Dr : 0);
   int c2 = (Dc<0 ? m.cols-c1 : m.cols-Dc-c1);
   int r2 = (Dr<0 ? m.rows-r1 : m.rows-Dr-r1);
-  dst = Mat(m.size(), m.type(), Scalar::all(0));
+  dst = Mat::zeros(m.size(), m.type());
   m(Rect(c1, r1, c2, r2)).copyTo(dst(Rect(m.cols-c2-c1, m.rows-r2-r1, c2, r2)));
 }
-pair<int, int> mtb::align(const int j, int lev, const int max_level) {
+pair<int, int> MTB::align(const int j, int lev, const int max_level) {
   if(lev == max_level) return {0, 0};
 
   pair<int, int> diff = align(j, lev+1, max_level);

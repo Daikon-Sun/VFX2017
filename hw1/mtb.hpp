@@ -6,10 +6,10 @@
 using namespace std;
 using namespace cv;
 
-class mtb {
+class MTB {
 
 public:
-  mtb(const vector<Mat>& pics) : _pics(pics) {};
+  MTB(const vector<Mat>& pics) : _pics(pics) {};
   void process(vector<Mat>&, int, int);
 private:
   void transform_bi(const Mat&, Mat&, Mat&, int);

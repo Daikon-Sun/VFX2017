@@ -6,10 +6,10 @@
 using namespace cv;
 using namespace std;
 
-class debevec {
+class DEBEVEC {
 
 public:
-  debevec(const vector<Mat>& pics, const vector<float>& etimes,
+  DEBEVEC(const vector<Mat>& pics, const vector<float>& etimes,
           const vector<Point>& points) 
     : _pics(pics), _etimes(etimes), _points(points) {};
   void process(vector<Mat>&, float);

@@ -1,6 +1,6 @@
 #include "debevec.hpp"
 
-void debevec::process(vector<Mat>& results, float lambda) {
+void DEBEVEC::process(vector<Mat>& results, float lambda) {
   int pic_num = (int)_pics.size();
   int sam_num = (int)_points.size();
   int num_channels = _pics[0].channels();

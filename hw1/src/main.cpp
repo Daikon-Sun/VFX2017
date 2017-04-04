@@ -27,7 +27,7 @@ int main (int argc, char* argv[]) {
   string in_dir = string(argv[1])+"/";
   int max_level = atoi(argv[2]);
   int max_denoise = atoi(argv[3]);
-  float lambda = atof(argv[4]);
+  double lambda = atof(argv[4]);
   string out_hdr_file = string(argv[5]);
   string out_jpg_file = string(argv[6]);
 

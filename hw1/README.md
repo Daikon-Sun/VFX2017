@@ -12,12 +12,12 @@ Execute as follows:
 ```
 ./hdr pics_dir/ mtb_max_level mtb_max_denoise debevec_lambda_value 
 ```
-###Make sure the followings are in the pics_dir:
+### Make sure the followings are in the pics_dir:
 - A txt file named `input.txt` which looks like:
 ```
 15
-xxx.JPG 0.25
-yyy.JPG 2
+pic1.JPG 0.25
+pic2.JPG 2
 ...
 ```
 The first line contains a number N: the total number of pictures to be computed
@@ -33,7 +33,7 @@ The following N lines show picture name and exposure time seperated by a space.
 ```
 The first line contains a number N: the total sampled points.
 The following N lines show the x and y coordinate seperated by a space.
-###Descriptions of all hyper-parameters:
+### Descriptions of all hyper-parameters:
 - mtb_max_level: The maximum level of image pyramid while aligning images using
   the median threshold bitmap (MTB).
 - mtb_max_denoise: The threshold whenever a grayscaled pixel value is considered

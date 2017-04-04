@@ -1,18 +1,18 @@
 CXX=g++
 CXXFLAGS=-std=c++14 -O3
 LIBS=`pkg-config --libs opencv`
-OBJ=$(addprefix obj/, $(patsubst %.hpp, %.o, $(wildcard *.hpp)))
+OBJ=$(addprefix obj/, $(patsubst src/%.hpp, %.o, $(wildcard src/*.hpp)))
 
 .PHONY: clean
 
 main: $(OBJ)
-	$(CXX) $(CXXFLAGS) main.cpp -o $@ $^ $(LIBS)
+	$(CXX) $(CXXFLAGS) src/main.cpp -o $@ $^ $(LIBS)
 
-obj/%.o: %.cpp
+obj/%.o: src/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@ $(LIBS)
 
 run:
-	./main test_pics2 7 4 1
+	./main test_pics2 7 4 1 result/out.hdr result/out.jpg
 
 clean:
 	@rm obj/*.o

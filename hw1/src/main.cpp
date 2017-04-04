@@ -8,6 +8,7 @@ using namespace std;
 
 #include "mtb.hpp"
 #include "hdr.hpp"
+#include "tonemap.hpp"
 
 void show(const Mat& m) {
   imshow("show", m);
@@ -58,7 +59,11 @@ int main (int argc, char* argv[]) {
   debevec.process(hdr, lambda);
   imwrite(out_hdr_file, hdr);
 
-  Ptr<TonemapDurand> tonemap = createTonemapDurand(1.0f);
-  tonemap->process(hdr, ldr);
+  ifstream par_in(in_dir+"tonemap_parameter.txt", ifstream::in);
+  double f, m, a, c;
+  par_in >> f >> m >> a >> c;
+  // tonemap(f, m, a ,c)
+  TONEMAP tonemap(f, m, a ,c);
+  tonemap.process(hdr, ldr);
   show(ldr);
 }

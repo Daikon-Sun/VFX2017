@@ -17,7 +17,7 @@ public:
 private:
   int W(int val) { return (val<=127 ? val+1 : 256-val); }
   const vector<Mat>& _pics;
-  const vector<float>& _etimes;
+  const vector<double>& _etimes;
   const vector<Point>& _points;
 };
 #endif

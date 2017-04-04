@@ -35,7 +35,7 @@ int main (int argc, char* argv[]) {
   int pic_num; ifs >> pic_num; //total number of pictures to be aligned
   //pic_num = 3; //while debugging
   vector<Mat> pics(pic_num); //original image
-  vector<float> etimes(pic_num);
+  vector<double> etimes(pic_num);
   for(int i = 0; i<pic_num; ++i) {
     string pic_name; ifs >> pic_name >> etimes[i];
     pics[i] = imread(in_dir+pic_name, IMREAD_COLOR);

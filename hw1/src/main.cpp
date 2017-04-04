@@ -49,18 +49,16 @@ int main (int argc, char* argv[]) {
   ifs = ifstream(in_dir+"sample.txt", ifstream::in);
   int sam_num; ifs >> sam_num;
   vector<Point> points(sam_num);
-  for(int i = 0; i<sam_num; ++i)
-    ifs >> points[i].x >> points[i].y;
+  for(int i = 0; i<sam_num; ++i) ifs >> points[i].x >> points[i].y;
   ifs.close();
 
+  Mat ldr, hdr;
+
   DEBEVEC debevec(pics, etimes, points);
-  Mat hdr;
   debevec.process(hdr, lambda);
   imwrite(out_hdr_file, hdr);
 
-  Mat ldr;
   Ptr<TonemapDurand> tonemap = createTonemapDurand(1.0f);
   tonemap->process(hdr, ldr);
-
-	show(ldr);
+  show(ldr);
 }

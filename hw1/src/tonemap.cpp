@@ -4,14 +4,15 @@ void TONEMAP::process(Mat& input, Mat& output) {
   output = input.clone();
 
   Mat gray_img; // for calculating luminance
-  cvtColor(input, gray_img, COLOR_RGB2GRAY);
+  cvtColor(input, gray_img, COLOR_BGR2GRAY);
 
   double Cav[3];
   double Lav = mean(gray_img).val[0];
   double L, Lmin, Lmax, Ia, Ig, Il;
 
   minMaxLoc(gray_img, &Lmin, &Lmax);
-  _m = (_m > 0) ? _m : 0.3 + 0.7 * pow((log(Lmax) - log(Lav)) / (log(Lmax) - log(Lmin)), 1.4);
+  _m = (_m > 0) ? _m : 
+    0.3 + 0.7 * pow((log(Lmax) - log(Lav)) / (log(Lmax) - log(Lmin)), 1.4);
 
   cout << _m << endl;
 

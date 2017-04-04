@@ -1,59 +1,50 @@
-#include "opencv2/core.hpp"
-#include "opencv2/highgui.hpp"
-#include "opencv2/imgcodecs.hpp"
-#include "opencv2/opencv.hpp"
+#include "hdr.hpp"
 
-using namespace cv;
-using namespace std;
+void DEBEVEC::process(Mat& result, float lambda) {
+  int pic_num = (int)_pics.size();
+  int sam_num = (int)_points.size();
+  int num_channels = _pics[0].channels();
+  vector<Mat> X(num_channels);
+  for(int i = 0; i<num_channels; ++i) {
+    Mat A = Mat::zeros(sam_num*pic_num + 257, 256 + sam_num, CV_64F);
+    Mat B = Mat::zeros(A.rows, 1, CV_64F);
 
-#include "mtb.hpp"
-#include "debevec.hpp"
+    int eq = 0;
+    for(int j = 0; j<sam_num; ++j) for(int k = 0; k<pic_num; ++k) {
+      int val = _pics[k].at<Vec3b>(_points[j])[i];
+      int w = W(val);
+      A.at<float>(eq, val) = w;
+      A.at<float>(eq, 256+j) = -w;
+      B.at<float>(eq, 0) = w * log(_etimes[k]);
+      ++eq;
+    }
+    A.at<float>(eq, 128) = 1;
+    ++eq;
 
-void show(const Mat& m) {
-  imshow("show", m);
-  waitKey(0);
-}
-void onMouse(int evt, int x, int y, int flags, void* param) {
-  if(evt == CV_EVENT_LBUTTONDOWN) {
-    vector<Point>* pts = (vector<Point>*)param;
-    pts->push_back(Point(x, y));
+    for(int j = 1; j<255; ++j) {
+      int w = W(j);
+      A.at<float>(eq, j-1) = lambda * w;
+      A.at<float>(eq, j) = -2 * lambda * w;
+      A.at<float>(eq, j+1) = lambda * w;
+      ++eq;
+    }
+    solve(A, B, X[i], DECOMP_SVD);
   }
-}
-int main (int argc, char* argv[]) {
-  assert(argc == 5);
-  namedWindow("show", WINDOW_NORMAL);
 
-  string dir = string(argv[1])+"/";
-  int max_level = atoi(argv[2]);
-  int max_denoise = atoi(argv[3]);
-  float lambda = atof(argv[4]);
-
-  ifstream ifs(dir+"input.txt", ifstream::in);
-  int pic_num; ifs >> pic_num; //total number of pictures to be aligned
-  //pic_num = 3; //while debugging
-  vector<Mat> pics(pic_num); //original image
-  vector<float> etimes(pic_num);
-  for(int i = 0; i<pic_num; ++i) {
-    string pic_name; ifs >> pic_name >> etimes[i];
-    pics[i] = imread(dir+pic_name, IMREAD_COLOR);
-    CV_Assert(!pics[i].empty());
+  Mat res[3];
+  for(int i = 0; i<3; ++i) res[i] = Mat::zeros(_pics[0].size(), CV_32F);
+  for(int c = 0; c<num_channels; ++c) {
+    for(int i = 0; i<res[c].cols; ++i) for(int j = 0; j<res[c].rows; ++j) {
+      float& sum = res[c].at<float>(j, i);
+      float sum_w = 0;
+      for(int k = 0; k<pic_num; ++k) {
+        int val = _pics[k].at<Vec3b>(j, i)[c];
+        int w = W(val); 
+        sum += w * (X[c].at<float>(0, val) - log(_etimes[k]));
+        sum_w += w;
+      }
+      sum = exp(sum/sum_w);
+    }
   }
-  ifs.close();
-
-  MTB mtb(pics);
-  vector<Mat> aligned;
-  mtb.process(aligned, max_level, max_denoise);
-  //or(auto& m:aligned) show(m);
-
-  ifs = ifstream(dir+"sample.txt", ifstream::in);
-  int sam_num; ifs >> sam_num;
-  vector<Point> points(sam_num);
-  for(int i = 0; i<sam_num; ++i)
-    ifs >> points[i].x >> points[i].y;
-  ifs.close();
-
-  DEBEVEC debevec(pics, etimes, points);
-
-  vector<Mat> hdrs;
-  debevec.process(hdrs, lambda);
+  result = (res[0]+res[1]+res[2])/3;
 }

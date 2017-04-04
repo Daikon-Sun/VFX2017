@@ -5,14 +5,14 @@ OBJ=$(addprefix obj/, $(patsubst %.hpp, %.o, $(wildcard *.hpp)))
 
 .PHONY: clean
 
-HDR: $(OBJ)
-	$(CXX) $(CXXFLAGS) hdr.cpp -o $@ $^ $(LIBS)
+main: $(OBJ)
+	$(CXX) $(CXXFLAGS) main.cpp -o $@ $^ $(LIBS)
 
 obj/%.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@ $(LIBS)
 
 run:
-	./HDR test_pics1 8 4 1
+	./main test_pics2 7 4 1
 
 clean:
 	@rm obj/*.o

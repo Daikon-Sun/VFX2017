@@ -22,7 +22,7 @@ pic2.JPG 2
 ```
 The first line contains a number N: the total number of pictures to be computed.
 The following N lines show picture name and exposure time seperated by a space.
-- All the pictures listed in input.txt (case sensitive)
+- All the name of pictures listed in input.txt (case sensitive)
 - Another txt file named `sample.txt` which listed all the sampled point in the
   following manner:
 ```

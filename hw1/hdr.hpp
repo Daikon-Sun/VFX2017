@@ -12,7 +12,7 @@ public:
   DEBEVEC(const vector<Mat>& pics, const vector<float>& etimes,
           const vector<Point>& points) 
     : _pics(pics), _etimes(etimes), _points(points) {};
-  void process(vector<Mat>&, float);
+  void process(Mat&, float);
 
 private:
   int W(int val) { return (val<=127 ? val+1 : 256-val); }

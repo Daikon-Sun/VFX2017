@@ -54,7 +54,7 @@ int main (int argc, char* argv[]) {
 
   Mat ldr, hdr;
 
-  DEBEVEC debevec(pics, etimes, points);
+  DEBEVEC debevec(aligned, etimes, points);
   debevec.process(hdr, lambda);
   imwrite(out_hdr_file, hdr);
 

@@ -27,7 +27,7 @@ int main (int argc, char* argv[]) {
   string in_dir = string(argv[1])+"/";
   int max_level = atoi(argv[2]);
   int max_denoise = atoi(argv[3]);
-  float lambda = atof(argv[4]);
+  double lambda = atof(argv[4]);
   string out_hdr_file = string(argv[5]);
   string out_jpg_file = string(argv[6]);
 
@@ -35,7 +35,7 @@ int main (int argc, char* argv[]) {
   int pic_num; ifs >> pic_num; //total number of pictures to be aligned
   //pic_num = 3; //while debugging
   vector<Mat> pics(pic_num); //original image
-  vector<float> etimes(pic_num);
+  vector<double> etimes(pic_num);
   for(int i = 0; i<pic_num; ++i) {
     string pic_name; ifs >> pic_name >> etimes[i];
     pics[i] = imread(in_dir+pic_name, IMREAD_COLOR);

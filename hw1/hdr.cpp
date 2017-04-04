@@ -28,11 +28,11 @@ int main (int argc, char* argv[]) {
   int max_denoise = atoi(argv[3]);
   float lambda = atof(argv[4]);
 
-  ifstream ifs(dir+"all_input.txt", ifstream::in);
+  ifstream ifs(dir+"input.txt", ifstream::in);
   int pic_num; ifs >> pic_num; //total number of pictures to be aligned
   //pic_num = 3; //while debugging
   vector<Mat> pics(pic_num); //original image
-  vector<double> etimes(pic_num);
+  vector<float> etimes(pic_num);
   for(int i = 0; i<pic_num; ++i) {
     string pic_name; ifs >> pic_name >> etimes[i];
     pics[i] = imread(dir+pic_name, IMREAD_COLOR);
@@ -40,10 +40,20 @@ int main (int argc, char* argv[]) {
   }
   ifs.close();
 
+  MTB mtb(pics);
+  vector<Mat> aligned;
+  mtb.process(aligned, max_level, max_denoise);
+  //or(auto& m:aligned) show(m);
+
   ifs = ifstream(dir+"sample.txt", ifstream::in);
   int sam_num; ifs >> sam_num;
-  vector<Point> sample_points(sam_num);
+  vector<Point> points(sam_num);
   for(int i = 0; i<sam_num; ++i)
-    ifs >> sample_points[i].x >> sample_points[i].y;
+    ifs >> points[i].x >> points[i].y;
   ifs.close();
+
+  DEBEVEC debevec(pics, etimes, points);
+
+  vector<Mat> hdrs;
+  debevec.process(hdrs, lambda);
 }

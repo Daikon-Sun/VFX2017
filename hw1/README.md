@@ -10,7 +10,7 @@ Type `make` under `/hw1` directory and a `hdr` executable will be created.
 ## Usage
 Execute as follows:
 ```
-./hdr pics_dir/ mtb_max_level mtb_max_denoise debevec_lambda_value 
+./HDR pics_dir/ mtb_max_level mtb_max_denoise debevec_lambda_value 
 ```
 ### Make sure the followings are in the pics_dir:
 - A txt file named `input.txt` which looks like:

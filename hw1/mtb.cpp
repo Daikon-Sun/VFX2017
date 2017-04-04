@@ -1,28 +1,29 @@
-#include "opencv2/core.hpp"
-#include "opencv2/imgcodecs.hpp"
-#include "opencv2/highgui.hpp"
-#include "opencv2/opencv.hpp"
+#include "mtb.hpp"
 
-#include <algorithm>
-#include <cassert>
-#include <iostream>
-#include <string>
-
-using namespace std;
-using namespace cv;
-
-constexpr int max_level = 7; //maximum level to be shrinked
-constexpr int max_denoise = 4; //range for de-noise
-
-void show(const Mat& m) {
-  imshow("show", m);
-  waitKey(0);
+void mtb::process(vector<Mat>& res, int max_level, int max_denoise) {
+  int num = (int)_pics.size();
+  _bi_pics.resize(num); //0-or-255 image after thresholding
+  _masks.resize(num); //mask to de-noise
+  for(int i = 0; i<num; ++i) {
+    _bi_pics[i].resize(max_level);
+    _masks[i].resize(max_level);
+    Mat pic = _pics[i].clone();
+    transform_bi(pic, _bi_pics[i][0], _masks[i][0], max_denoise);
+    for(int j = 1; j<max_level; ++j) {
+      resize(pic, pic, Size(), 0.5, 0.5, INTER_NEAREST);
+      transform_bi(pic, _bi_pics[i][j], _masks[i][j], max_denoise);
+    }
+  }
+  vector< pair<int, int> > offsets(num);
+  for(int i = 1; i<num; ++i) {
+    offsets[i] = align(i, 0, max_level);
+    cerr << offsets[i].first << " " << offsets[i].second << endl;
+  }
 }
-
-void transform_bi(const Mat& m, Mat& bi, Mat& de) {
-  cvtColor(m, bi, COLOR_BGR2GRAY); //transform to grayscale
+void mtb::transform_bi(const Mat& m, Mat& bi, Mat& de, int max_denoise) {
+  cvtColor(m, bi, COLOR_BGR2GRAY);
   vector<uchar> all_vals;
-  assert(bi.isContinuous());
+  CV_Assert(bi.isContinuous());
   all_vals.assign(bi.datastart, bi.dataend);
   nth_element(all_vals.begin(), all_vals.begin()+all_vals.size()/2,
               all_vals.end());
@@ -33,7 +34,7 @@ void transform_bi(const Mat& m, Mat& bi, Mat& de) {
   de = upp+low;
   threshold(bi, bi, median, 255, THRESH_BINARY);
 }
-void shift(Mat& m, Mat& dst, const pair<int, int>& diff) {
+void mtb::shift(Mat& m, Mat& dst, const pair<int, int>& diff) {
   const int& Dc = diff.first;
   const int& Dr = diff.second;
   int c1 = (Dc<0 ? -Dc : 0);
@@ -43,17 +44,15 @@ void shift(Mat& m, Mat& dst, const pair<int, int>& diff) {
   dst = Mat(m.size(), m.type(), Scalar::all(0));
   m(Rect(c1, r1, c2, r2)).copyTo(dst(Rect(m.cols-c2-c1, m.rows-r2-r1, c2, r2)));
 }
-
-pair<int, int> align(vector< vector<Mat> >& bi_pics,
-                     vector< vector<Mat> >& masks, const int j, int lev) {
+pair<int, int> mtb::align(const int j, int lev, const int max_level) {
   if(lev == max_level) return {0, 0};
 
-  pair<int, int> diff = align(bi_pics, masks, j, lev+1);
+  pair<int, int> diff = align(j, lev+1, max_level);
 
-  Mat& fixed = bi_pics[0][lev];
-  Mat& moved = bi_pics[j][lev];
-  Mat& msk1 = masks[0][lev];
-  Mat& msk2 = masks[j][lev];
+  Mat& fixed = _bi_pics[0][lev];
+  Mat& moved = _bi_pics[j][lev];
+  Mat& msk1 = _masks[0][lev];
+  Mat& msk2 = _masks[j][lev];
  
   int best = fixed.cols*fixed.rows, bestc = -1, bestr = -1;
   for(int dc = -1; dc<2; ++dc) for(int dr = -1; dr<2; ++dr) {
@@ -72,37 +71,4 @@ pair<int, int> align(vector< vector<Mat> >& bi_pics,
     }
   }
   return {2*diff.first+bestc, 2*diff.second+bestr};
-}
-
-int main (int argc, char* argv[]) {
-  assert(argc == 2);
-  namedWindow("show", WINDOW_NORMAL);
-
-  string dir = string(argv[1])+"/";
-  ifstream ifs(dir+"file_list", ifstream::in);
-  int num; ifs >> num; //total number of pictures to be aligned
-  //num = 2; //while debugging
-  vector<String> pics_name(num);
-  vector<Mat> pics(num); //original image
-  vector< vector<Mat> > bi_pics(num); //0-or-255 image after thresholding
-  vector< vector<Mat> > masks(num); //mask to de-noise
-  for(int i = 0; i<num; ++i) {
-    string tmp; ifs >> tmp;
-    tmp = dir+tmp;
-    pics_name[i] = String(tmp); //convert c++ string to opencv String 
-    pics[i] = imread(tmp, IMREAD_COLOR);
-    bi_pics[i].resize(max_level);
-    masks[i].resize(max_level);
-    transform_bi(pics[i], bi_pics[i][0], masks[i][0]);
-    for(int j = 1; j<max_level; ++j) {
-      resize(pics[i], pics[i], Size(), 0.5, 0.5, INTER_NEAREST);
-      transform_bi(pics[i], bi_pics[i][j], masks[i][j]);
-    }
-  }
-
-  vector< pair<int, int> > offsets(num);
-  for(int i = 1; i<num; ++i) {
-    offsets[i] = align(bi_pics, masks, i, 0);
-    cerr << offsets[i].first << " " << offsets[i].second << endl;
-  }
 }

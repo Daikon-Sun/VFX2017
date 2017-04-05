@@ -5,12 +5,12 @@
 - opencv 3.2
 
 ## How to make:
-Type `make` under `/hw1` directory and a `hdr` executable will be created.
+Type `make` under `/hw1` directory and a `main` executable will be created.
 
 ## Usage
 Execute as follows:
 ```
-./HDR pics_dir/ mml mmd lambda hdr_filname jpg_filename
+./main pics_dir/ mml mmd lambda hdr_filname jpg_filename
 ```
 ### Make sure the followings are in the pics_dir:
 - A txt file named `input.txt` which looks like:
@@ -22,7 +22,7 @@ pic2.JPG 2
 ```
 The first line contains a number N: the total number of pictures to be computed.
 The following N lines show picture name and exposure time seperated by a space.
-- All the name of pictures listed in input.txt (case sensitive)
+- All the name of pictures listed in input.txt (case sensitive).
 - Another txt file named `sample.txt` which listed all the sampled point in the
   following manner:
 ```
@@ -32,7 +32,7 @@ The following N lines show picture name and exposure time seperated by a space.
 ...
 ```
 The first line contains a number N: the total sampled points.
-The following N lines show the x and y coordinate seperated by a space.
+The following N lines show the x and y coordinates seperated by a space.
 ### Descriptions of all hyper-parameters:
 - mml (mtb_max_level): The maximum level of image pyramid while aligning images using
   the median threshold bitmap (MTB).

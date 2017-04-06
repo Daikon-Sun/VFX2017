@@ -35,7 +35,8 @@ void TONEMAP::process(Mat& input, Mat& output) {
         Il = _c * input.at<Vec3f>(i, j)[ch] + (1-_c) * L;
         Ig = _c * Cav[ch] + (1-_c) * Lav;
         Ia = _a * Il + (1-_a) * Ig;
-        output.at<Vec3f>(i, j)[ch] /= input.at<Vec3f>(i, j)[ch] + pow(_f * Ia, _m);
+        output.at<Vec3f>(i, j)[ch] /= 
+          input.at<Vec3f>(i, j)[ch] + pow(_f * Ia, _m);
         output.at<Vec3f>(i, j)[ch] =
           (output.at<Vec3f>(i, j)[ch] - Lmin) / (Lmax - Lmin);
       }

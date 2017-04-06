@@ -9,13 +9,13 @@ void DEBEVEC::process(Mat& result, double lambda) {
   int sam_num = (int)_points.size();
   vector<Mat> X(3, Mat(256+sam_num, 1, CV_64FC1));
   for(int i = 0; i<3; ++i) {
-    Mat A = Mat::zeros(sam_num*pic_num + 257, 256 + sam_num, CV_64F);
-    Mat B = Mat::zeros(A.rows, 1, CV_64F);
+    Mat A = Mat::zeros(sam_num*pic_num + 257, 256 + sam_num, CV_64FC1);
+    Mat B = Mat::zeros(A.rows, 1, CV_64FC1);
 
     int eq = 0;
     for(int j = 0; j<sam_num; ++j) for(int k = 0; k<pic_num; ++k) {
-      int val = _pics[k].at<Vec3b>(_points[j])[i];
-      int w = W.at<double>(val);
+      const uchar& val = _pics[k].at<Vec3b>(_points[j])[i];
+      const double& w = W.at<double>(val);
       A.at<double>(eq, val) = w;
       A.at<double>(eq, 256+j) = -w;
       B.at<double>(eq, 0) = w * log(_etimes[k]);
@@ -25,7 +25,7 @@ void DEBEVEC::process(Mat& result, double lambda) {
     ++eq;
 
     for(int j = 1; j<255; ++j) {
-      int w = W.at<double>(j);
+      const double& w = W.at<double>(j);
       A.at<double>(eq, j-1) = lambda * w;
       A.at<double>(eq, j) = -2 * lambda * w;
       A.at<double>(eq, j+1) = lambda * w;
@@ -39,8 +39,7 @@ void DEBEVEC::process(Mat& result, double lambda) {
   vector< vector<Mat> > split_pics(pic_num, vector<Mat>(3));
   for(int i = 0; i<pic_num; ++i) split(_pics[i], split_pics[i]);
   for(int c = 0; c<3; ++c) {
-    Mat SUM_W(sz, CV_64FC1, Scalar::all(0));
-    Mat SUM(sz, CV_64FC1, Scalar::all(0));
+    Mat SUM_W(sz, CV_64FC1, Scalar::all(0)), SUM(sz, CV_64FC1, Scalar::all(0));
     for(int i = 0; i<pic_num; ++i) {
       Mat w(sz, CV_64FC1, Scalar::all(0)), val(sz, CV_64FC1, Scalar::all(0));
       LUT(split_pics[i][c], W, w);

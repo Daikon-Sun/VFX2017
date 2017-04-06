@@ -22,17 +22,7 @@ pic2.JPG 2
 ```
 The first line contains a number N: the total number of pictures to be computed.
 The following N lines show picture name and exposure time seperated by a space.
-- All the name of pictures listed in input.txt (case sensitive).
-- Another txt file named `sample.txt` which listed all the sampled point in the
-  following manner:
-```
-100
-10 11
-20 19
-...
-```
-The first line contains a number N: the total sampled points.
-The following N lines show the x and y coordinates seperated by a space.
+- All the pictures listed in input.txt (case sensitive).
 ### Descriptions of all hyper-parameters:
 - mml (mtb_max_level): The maximum level of image pyramid while aligning images using
   the median threshold bitmap (MTB).

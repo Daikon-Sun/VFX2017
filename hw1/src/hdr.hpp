@@ -7,10 +7,19 @@ using namespace cv;
 using namespace std;
 
 class DEBEVEC {
-
 public:
-  DEBEVEC(const vector<Mat>& pics, const vector<double>& etimes,
-          const vector<Point>& points) 
+  DEBEVEC(const vector<Mat>& pics, const vector<double>& etimes)
+    : _pics(pics), _etimes(etimes) {};
+  void process(Mat&, double);
+
+private:
+  const vector<Mat>& _pics;
+  const vector<double>& _etimes;
+};
+class ROBERTSON {
+public:
+  ROBERTSON(const vector<Mat>& pics, const vector<double>& etimes,
+            const vector<Point>& points) 
     : _pics(pics), _etimes(etimes), _points(points) {};
   void process(Mat&, double);
 

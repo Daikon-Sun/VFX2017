@@ -12,7 +12,7 @@ obj/%.o: src/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@ $(LIBS)
 
 run:
-	./main test_pics2 7 4 1 result/out.hdr result/out.jpg
+	./main test_pics2 7 4 100 result/out.hdr result/out.jpg
 
 clean:
 	@rm obj/*.o

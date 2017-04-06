@@ -16,6 +16,7 @@ void show(const Mat& m) {
 }
 int main (int argc, char* argv[]) {
   assert(argc == 7);
+  srand(time(NULL));
   namedWindow("show", WINDOW_NORMAL);
 
   string in_dir = string(argv[1])+"/";
@@ -40,16 +41,10 @@ int main (int argc, char* argv[]) {
   MTB mtb(pics);
   vector<Mat> aligned;
   mtb.process(aligned, max_level, max_denoise);
-
-  ifs = ifstream(in_dir+"sample.txt", ifstream::in);
-  int sam_num; ifs >> sam_num;
-  vector<Point> points(sam_num);
-  for(int i = 0; i<sam_num; ++i) ifs >> points[i].x >> points[i].y;
-  ifs.close();
   
   Mat ldr, hdr;
 
-  DEBEVEC debevec(aligned, etimes, points);
+  DEBEVEC debevec(aligned, etimes);
   debevec.process(hdr, lambda);
   imwrite(out_hdr_file, hdr);
 

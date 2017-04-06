@@ -1,10 +1,29 @@
 #include "hdr.hpp"
 
+void generate_points(const Mat& m, vector<Point>& _points) {
+  constexpr int sam_num = 100, range = 2;
+  _points.reserve(sam_num);
+  while(_points.size() < sam_num) {
+    int c = rand()%(m.cols-10)+5, r = rand()%(m.rows-10)+5;
+    const Vec3b& val = m.at<Vec3b>(c, r);
+    bool same = true;
+    for(int j = c-range; j<=c+range; ++j) for(int k = r-range; k<=r+range; ++k)
+      if(m.at<Vec3b>(j, k) != val) {
+        same = false;
+        break;
+      }
+    if( same ) _points.emplace_back(c, r);
+  }
+}
+
 void DEBEVEC::process(Mat& result, double lambda) {
 
   Mat W(1, 256, CV_64FC1);
   for(int i = 0; i<256; ++i) W.at<double>(i) = (i<=127 ? i+1 : 256-i);
 
+  vector<Point> _points;
+  generate_points(_pics[0], _points);
+  
   int pic_num = (int)_pics.size();
   int sam_num = (int)_points.size();
   vector<Mat> X(3, Mat(256+sam_num, 1, CV_64FC1));

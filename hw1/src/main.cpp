@@ -14,12 +14,6 @@ void show(const Mat& m) {
   imshow("show", m);
   waitKey(0);
 }
-void onMouse(int evt, int x, int y, int flags, void* param) {
-  if(evt == CV_EVENT_LBUTTONDOWN) {
-    vector<Point>* pts = (vector<Point>*)param;
-    pts->push_back(Point(x, y));
-  }
-}
 int main (int argc, char* argv[]) {
   assert(argc == 7);
   namedWindow("show", WINDOW_NORMAL);
@@ -52,7 +46,7 @@ int main (int argc, char* argv[]) {
   vector<Point> points(sam_num);
   for(int i = 0; i<sam_num; ++i) ifs >> points[i].x >> points[i].y;
   ifs.close();
-
+  
   Mat ldr, hdr;
 
   DEBEVEC debevec(aligned, etimes, points);
@@ -62,7 +56,6 @@ int main (int argc, char* argv[]) {
   ifstream par_in(in_dir+"tonemap_parameter.txt", ifstream::in);
   double f, m, a, c;
   par_in >> f >> m >> a >> c;
-  // tonemap(f, m, a ,c)
   TONEMAP tonemap(f, m, a ,c);
   tonemap.process(hdr, ldr);
   imwrite(out_jpg_file, ldr);

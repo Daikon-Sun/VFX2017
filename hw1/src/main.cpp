@@ -46,6 +46,7 @@ int main (int argc, char* argv[]) {
   Mat ldr, hdr;
   MERTENS mertens(pics);
   mertens.process(ldr);
+  show(ldr);
   exit(0);
 
   DEBEVEC debevec(pics, etimes);

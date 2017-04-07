@@ -77,33 +77,34 @@ void MERTENS::process(Mat& result) {
   Size sz = _pics[0].size();
   vector<Mat> W(pic_num);
   Mat ALL_W(sz, CV_64FC1, Scalar::all(0)); 
+  vector<Mat> pics(pic_num);
   for(int i = 0; i<pic_num; ++i) {
     Mat img, gray, C, S = Mat(sz, CV_64FC1, Scalar::all(0));
     Mat E = Mat(sz, CV_64FC1, Scalar::all(1)), diff, s;
-    _pics[i].convertTo(img, CV_64FC3);
-    vector<Mat> split_img(3);
-    split(img, split_img);
-    img.convertTo(img, CV_32FC3);
+    _pics[i].convertTo(pics[i], CV_64FC3, 1.0/255);
+    vector<Mat> split_pic(3);
+    split(pics[i], split_pic);
+    pics[i].convertTo(img, CV_32FC3);
     cvtColor(img, gray, COLOR_BGR2GRAY);
     gray.convertTo(gray, CV_64FC1);
     //contrast
     Laplacian(gray, C, CV_64FC1);
     C = abs(C);
     //saturation
-    Mat mean = (split_img[0]+split_img[1]+split_img[2]) / 3.0;
+    Mat mean = (split_pic[0]+split_pic[1]+split_pic[2]) / 3.0;
     for(int c = 0; c<3; ++c) {
-      pow(split_img[c]-mean, 2, diff);
+      pow(split_pic[c]-mean, 2, diff);
       S += diff;
     }
     sqrt(S/3, S);
     //well-exposured
     for(int c = 0; c<3; ++c) {
-      pow((split_img[c]-0.5) / (0.2 * sqrt(2)), 2, s);
+      pow((split_pic[c]-0.5) / (0.2 * sqrt(2)), 2, s);
       exp(-s, s);
       E = E.mul(s);
     } 
     W[i] = Mat(sz, CV_64FC1, Scalar::all(1));
-    constexpr double wc = 1, ws = 1, we = 1;
+    constexpr double wc = 1, ws = 1, we = 0;
     pow(C, wc, C);
     pow(S, ws, S);
     pow(E, we, E);
@@ -112,5 +113,34 @@ void MERTENS::process(Mat& result) {
     W[i] = W[i].mul(E)+1e-9;
     ALL_W += W[i];
   }
-  
+  Mat up;
+  constexpr int max_lev = 7;
+  vector<Mat> final_pics(max_lev + 1);
+  vector< vector<Mat> > pics_pyr(pic_num), W_pyr(pic_num);
+  for(int i = 0; i<pic_num; ++i) {
+    W[i] /= ALL_W;
+    buildPyramid(pics[i], pics_pyr[i], max_lev);
+    buildPyramid(W[i], W_pyr[i], max_lev);
+  }
+  for(int i = 0; i<=max_lev; ++i)
+    final_pics[i] = Mat(pics_pyr[0][i].size(), CV_64FC3, Scalar::all(0));
+  for(int i = 0; i<pic_num; ++i) {
+    for(int j = 0; j<max_lev; ++j) {
+      pyrUp(pics_pyr[i][j+1], up,  pics_pyr[i][j].size());
+      pics_pyr[i][j] -= up;
+    }
+    for(int j = 0; j<=max_lev; ++j) {
+      vector<Mat> split_pics_pyr(3);
+      split(pics_pyr[i][j], split_pics_pyr);
+      for(int c = 0; c<3; ++c) 
+        split_pics_pyr[c] = split_pics_pyr[c].mul(W_pyr[i][j]);
+      merge(split_pics_pyr, pics_pyr[i][j]);
+      final_pics[j] += pics_pyr[i][j];
+    }
+  }
+  for(int i = max_lev-1; i>=0; --i) {
+    pyrUp(final_pics[i+1], up, final_pics[i].size());
+    final_pics[i] += up;
+  }
+  result = final_pics[0].clone();
 }

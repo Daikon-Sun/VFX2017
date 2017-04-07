@@ -1,5 +1,7 @@
 #include "mtb.hpp"
 
+void show(const Mat&);
+
 void MTB::process(vector<Mat>& res, int max_level, int max_denoise) {
   int pics_num = (int)_pics.size();
   _bi_pics.resize(pics_num); //0-or-255 image after thresholding
@@ -67,7 +69,7 @@ pair<int, int> MTB::align(const int j, int lev, const int max_level) {
   Mat& msk1 = _masks[0][lev];
   Mat& msk2 = _masks[j][lev];
  
-  int best = fixed.cols*fixed.rows, bestc = -1, bestr = -1;
+  int best = fixed.cols*fixed.rows, bestc = 0, bestr = 0;
   for(int dc = -1; dc<2; ++dc) for(int dr = -1; dr<2; ++dr) {
     Mat moved_out, msk1_out, msk2_out, res;
     int Dc = 2*diff.first+dc, Dr = 2*diff.second+dr;

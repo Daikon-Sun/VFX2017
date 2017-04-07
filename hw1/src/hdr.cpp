@@ -4,14 +4,16 @@ void generate_points(const Mat& m, vector<Point>& _points) {
   constexpr int sam_num = 50, range = 3;
   _points.reserve(sam_num);
   while(_points.size() < sam_num) {
-    int c = rand()%(m.cols-10)+5, r = rand()%(m.rows-10)+5;
-    const Vec3b& val = m.at<Vec3b>(c, r);
+    const int r = rand()%(m.rows-10)+5;
+    const int c = rand()%(m.cols-10)+5;
+    const Vec3b& val = m.at<Vec3b>(r, c);
     bool same = true;
-    for(int j = c-range; j<=c+range; ++j) for(int k = r-range; k<=r+range; ++k)
+    for(int j = r-range; j<=r+range; ++j) for(int k = c-range; k<=c+range; ++k) {
       if(m.at<Vec3b>(j, k) != val) {
         same = false;
         break;
       }
+    }
     if( same ) _points.emplace_back(c, r);
   }
 }
@@ -19,21 +21,24 @@ void generate_points(const Mat& m, vector<Point>& _points) {
 void DEBEVEC::process(Mat& result, double lambda) {
 
   Mat W(1, 256, CV_64FC1);
+  //for(int i = 0; i<256; ++i) W.at<double>(i) = 1-pow(2.0*i/255-1, 20);
   for(int i = 0; i<256; ++i) W.at<double>(i) = (i<=127 ? i+1 : 256-i);
-
+  
   vector<Point> _points;
   generate_points(_pics[0], _points);
   
   int pic_num = (int)_pics.size();
   int sam_num = (int)_points.size();
-  vector<Mat> X(3, Mat(256+sam_num, 1, CV_64FC1));
-  for(int i = 0; i<3; ++i) {
+  vector<Mat> X(3);
+  for(int c = 0; c<3; ++c) {
+    X[c] = Mat(256+sam_num, 1, CV_64FC1);
     Mat A = Mat::zeros(sam_num*pic_num + 257, 256 + sam_num, CV_64FC1);
     Mat B = Mat::zeros(A.rows, 1, CV_64FC1);
 
     int eq = 0;
     for(int j = 0; j<sam_num; ++j) for(int k = 0; k<pic_num; ++k) {
-      const uchar& val = _pics[k].at<Vec3b>(_points[j])[i];
+      const uchar& val = _pics[k].at<Vec3b>(_points[j])[c];
+      CV_Assert(val>=0 && val<=255);
       const double& w = W.at<double>(val);
       A.at<double>(eq, val) = w;
       A.at<double>(eq, 256+j) = -w;
@@ -50,8 +55,8 @@ void DEBEVEC::process(Mat& result, double lambda) {
       A.at<double>(eq, j+1) = lambda * w;
       ++eq;
     }
-    solve(A, B, X[i], DECOMP_SVD);
-    X[i] = X[i].rowRange(0, 256);
+    solve(A, B, X[c], DECOMP_SVD);
+    X[c] = X[c].rowRange(0, 256);
   }
   Size sz = _pics[0].size();
   vector<Mat> res(3);
@@ -96,7 +101,7 @@ void MERTENS::process(Mat& result) {
       pow(split_pic[c]-mean, 2, diff);
       S += diff;
     }
-    sqrt(S/3, S);
+    sqrt(S/3.0, S);
     //well-exposured
     for(int c = 0; c<3; ++c) {
       pow((split_pic[c]-0.5) / (0.2 * sqrt(2)), 2, s);
@@ -104,7 +109,7 @@ void MERTENS::process(Mat& result) {
       E = E.mul(s);
     } 
     W[i] = Mat(sz, CV_64FC1, Scalar::all(1));
-    constexpr double wc = 1, ws = 1, we = 0;
+    constexpr double wc = 1, ws = 1, we = 1;
     pow(C, wc, C);
     pow(S, ws, S);
     pow(E, we, E);

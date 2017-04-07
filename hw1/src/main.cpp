@@ -15,7 +15,7 @@ void show(const Mat& m) {
   waitKey(0);
 }
 int main (int argc, char* argv[]) {
-  assert(argc == 7);
+  assert(argc == 11);
   srand(time(NULL));
   namedWindow("show", WINDOW_NORMAL);
 
@@ -23,8 +23,12 @@ int main (int argc, char* argv[]) {
   int max_level = atoi(argv[2]);
   int max_denoise = atoi(argv[3]);
   double lambda = atof(argv[4]);
-  string out_hdr_file = string(argv[5]);
-  string out_jpg_file = string(argv[6]);
+  double f = atof(argv[5]);
+  double m = atof(argv[6]);
+  double a = atof(argv[7]);
+  double c = atof(argv[8]);
+  string out_hdr_file = string(argv[9]);
+  string out_jpg_file = string(argv[10]);
 
   ifstream ifs(in_dir+"input.txt", ifstream::in);
   int pic_num; ifs >> pic_num; //total number of pictures to be aligned
@@ -33,7 +37,6 @@ int main (int argc, char* argv[]) {
   vector<double> etimes(pic_num);
   for(int i = 0; i<pic_num; ++i) {
     string pic_name; ifs >> pic_name >> etimes[i];
-    etimes[i] = 1.0/etimes[i];
     pics[i] = imread(in_dir+pic_name, IMREAD_COLOR);
     CV_Assert(!pics[i].empty());
   }
@@ -46,21 +49,26 @@ int main (int argc, char* argv[]) {
   cerr << "done" << endl;
   
   Mat ldr, hdr;
+  /*
   MERTENS mertens(aligned);
   mertens.process(ldr);
   show(ldr);
   imwrite(out_jpg_file, ldr*255);
   exit(0);
-
-  DEBEVEC debevec(pics, etimes);
+  */
+  
+  //vector<Mat> aligned = pics;
+  cerr << "start hdr-ing...";
+  DEBEVEC debevec(aligned, etimes);
   debevec.process(hdr, lambda);
   imwrite(out_hdr_file, hdr);
+  cerr << "done" << endl;
 
-  ifstream par_in(in_dir+"tonemap_parameter.txt", ifstream::in);
-  double f, m, a, c;
-  par_in >> f >> m >> a >> c;
+  //ifstream par_in(in_dir+"tonemap_parameter.txt", ifstream::in);
+  //double f, m, a, c;
+  //par_in >> f >> m >> a >> c;
   TONEMAP tonemap(f, m, a ,c);
   tonemap.process(hdr, ldr);
   imwrite(out_jpg_file, ldr);
-  //show(ldr);
+  show(ldr);
 }

@@ -39,14 +39,17 @@ int main (int argc, char* argv[]) {
   }
   ifs.close();
 
+  cerr << "start alignment...";
   MTB mtb(pics);
   vector<Mat> aligned;
   mtb.process(aligned, max_level, max_denoise);
+  cerr << "done" << endl;
   
   Mat ldr, hdr;
-  MERTENS mertens(pics);
+  MERTENS mertens(aligned);
   mertens.process(ldr);
   show(ldr);
+  imwrite(out_jpg_file, ldr*255);
   exit(0);
 
   DEBEVEC debevec(pics, etimes);

@@ -28,4 +28,12 @@ private:
   const vector<double>& _etimes;
   const vector<Point>& _points;
 };
+class MERTENS {
+public:
+  MERTENS(const vector<Mat>& pics) : _pics(pics) {};
+  void process(Mat&);
+
+private:
+  const vector<Mat>& _pics;
+};
 #endif

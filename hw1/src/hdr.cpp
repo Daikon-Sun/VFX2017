@@ -1,7 +1,7 @@
 #include "hdr.hpp"
 
 void generate_points(const Mat& m, vector<Point>& _points) {
-  constexpr int sam_num = 100, range = 2;
+  constexpr int sam_num = 50, range = 3;
   _points.reserve(sam_num);
   while(_points.size() < sam_num) {
     int c = rand()%(m.cols-10)+5, r = rand()%(m.rows-10)+5;
@@ -70,4 +70,47 @@ void DEBEVEC::process(Mat& result, double lambda) {
     res[c].convertTo(res[c], CV_32FC1);
   }
   merge(res, result);
+}
+
+void MERTENS::process(Mat& result) {
+  int pic_num = (int)_pics.size();
+  Size sz = _pics[0].size();
+  vector<Mat> W(pic_num);
+  Mat ALL_W(sz, CV_64FC1, Scalar::all(0)); 
+  for(int i = 0; i<pic_num; ++i) {
+    Mat img, gray, C, S = Mat(sz, CV_64FC1, Scalar::all(0));
+    Mat E = Mat(sz, CV_64FC1, Scalar::all(1)), diff, s;
+    _pics[i].convertTo(img, CV_64FC3);
+    vector<Mat> split_img(3);
+    split(img, split_img);
+    img.convertTo(img, CV_32FC3);
+    cvtColor(img, gray, COLOR_BGR2GRAY);
+    gray.convertTo(gray, CV_64FC1);
+    //contrast
+    Laplacian(gray, C, CV_64FC1);
+    C = abs(C);
+    //saturation
+    Mat mean = (split_img[0]+split_img[1]+split_img[2]) / 3.0;
+    for(int c = 0; c<3; ++c) {
+      pow(split_img[c]-mean, 2, diff);
+      S += diff;
+    }
+    sqrt(S/3, S);
+    //well-exposured
+    for(int c = 0; c<3; ++c) {
+      pow((split_img[c]-0.5) / (0.2 * sqrt(2)), 2, s);
+      exp(-s, s);
+      E = E.mul(s);
+    } 
+    W[i] = Mat(sz, CV_64FC1, Scalar::all(1));
+    constexpr double wc = 1, ws = 1, we = 1;
+    pow(C, wc, C);
+    pow(S, ws, S);
+    pow(E, we, E);
+    W[i] = W[i].mul(C);
+    W[i] = W[i].mul(S);
+    W[i] = W[i].mul(E)+1e-9;
+    ALL_W += W[i];
+  }
+  
 }

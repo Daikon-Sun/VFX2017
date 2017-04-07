@@ -33,6 +33,7 @@ int main (int argc, char* argv[]) {
   vector<double> etimes(pic_num);
   for(int i = 0; i<pic_num; ++i) {
     string pic_name; ifs >> pic_name >> etimes[i];
+    etimes[i] = 1.0/etimes[i];
     pics[i] = imread(in_dir+pic_name, IMREAD_COLOR);
     CV_Assert(!pics[i].empty());
   }
@@ -43,8 +44,11 @@ int main (int argc, char* argv[]) {
   mtb.process(aligned, max_level, max_denoise);
   
   Mat ldr, hdr;
+  MERTENS mertens(pics);
+  mertens.process(ldr);
+  exit(0);
 
-  DEBEVEC debevec(aligned, etimes);
+  DEBEVEC debevec(pics, etimes);
   debevec.process(hdr, lambda);
   imwrite(out_hdr_file, hdr);
 
@@ -54,5 +58,5 @@ int main (int argc, char* argv[]) {
   TONEMAP tonemap(f, m, a ,c);
   tonemap.process(hdr, ldr);
   imwrite(out_jpg_file, ldr);
-  show(ldr);
+  //show(ldr);
 }

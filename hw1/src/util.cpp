@@ -44,7 +44,7 @@ int parse(int ac, char** av) {
       ("align,a", value< vector<int> >(&algn)->multitoken(),
        "Align images before processing.")
       ("ghost,g", value<bool>()
-       ->default_value(ghost, ghost?"True":"False")->composing(),
+       ->implicit_value(ghost, ghost?"True":"False")->composing(),
        "Add ghost-removal mask.")
       ("verbose,v", value<bool>()
        ->implicit_value(verbose, verbose?"True":"False")->composing(),

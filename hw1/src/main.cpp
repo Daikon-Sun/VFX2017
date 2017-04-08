@@ -15,8 +15,8 @@ string out_hdr = "result/out.hdr";
 string out_jpg = "result/out.jpg";
 int method = 1, hdr_type = 0, tonemap_type = 0, fusion_type = 0;
 bool ghost = false, verbose = false;
-vector<int> algn;
-vector<double> hdr_para = {5}, tonemap_para = {0, 0, 1, 0};
+vector<int> algn = {7, 4};
+vector<double> hdr_para = {5, 60}, tonemap_para = {0, 0, 1, 0};
 vector<double> fusion_para = {1, 1, 1};
 
 #include "hdr.hpp"
@@ -31,6 +31,7 @@ int main (int argc, char** argv) {
   srand(time(NULL));
   namedWindow("show", WINDOW_NORMAL);
 
+  in_dir += "/";
   ifstream ifs(in_dir+"input.txt", ifstream::in);
   int pic_num; ifs >> pic_num;
   //pic_num = 3; //while debugging
@@ -43,20 +44,9 @@ int main (int argc, char** argv) {
   }
   ifs.close();
 
-  vector<Mat> W;
-  if(ghost) {
-    cerr << "start ghost-removal...";
-    ghost_removal(pics, W);
-    cerr << "done" << endl;
-    //for(size_t i = 0; i<W.size(); ++i)
-    //  imwrite("result/weight_"+to_string(i)+".hdr", W[i]);
-  } else {
-    cerr << "skip ghost-removal" << endl;
-  }
-
   vector<Mat> aligned;
   if(!algn.empty()) {
-    cerr << "start alignment";
+    cerr << "start alignment...";
     MTB mtb(algn);
     mtb.process(pics, aligned);
     cerr << "done" << endl;
@@ -65,22 +55,31 @@ int main (int argc, char** argv) {
     cerr << "skip alignment" << endl;
   }
   
+  vector<Mat> W;
+  if(ghost) {
+    cerr << "start ghost-removal...";
+    ghost_removal(pics, W);
+    cerr << "done" << endl;
+  } else {
+    cerr << "skip ghost-removal" << endl;
+  }
+
   Mat ldr, hdr;
   if(!method) {
-    cerr << "start hdr-ing";
+    cerr << "start hdr-ing...";
     DEBEVEC debevec(hdr_para);
     debevec.process(aligned, etimes, W, hdr);
     imwrite(out_hdr, hdr);
     cerr << "done" << endl;
   
-    cerr << "start tonemapping";
+    cerr << "start tonemapping...";
     TONEMAP tonemap(tonemap_para);
     tonemap.process(hdr, ldr);
     imwrite(out_jpg, ldr);
     if(verbose) show(ldr);
     cerr << "done" << endl;
   } else if(method == 1) {
-    cerr << "start exposure fusion";
+    cerr << "start exposure fusion...";
     MERTENS mertens(fusion_para);
     mertens.process(aligned, W, ldr);
     imwrite(out_jpg, ldr*255);

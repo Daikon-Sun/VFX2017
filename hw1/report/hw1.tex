@@ -37,6 +37,7 @@
 
 \setlength\parskip{6pt}
 \setlength\parindent{0pt}
+\setlength\intextsep{9pt}
 \linespread{1}
 \renewcommand{\refname}{\vspace{-30pt}}
 
@@ -58,93 +59,74 @@ In this project, we assemble high dynamic range (HDR) images from a series of ph
 \end{itemize}
 
 \subsection{Image alignment}
-Before HDR processing, image alignment is involved for better performance. The algorithm we used is shown in \textbf{Algorithm 1}, which is an implementation of median threshold bitmap (MTB) algorithm \cite{ref:Ward}. The function 
-
-\begin{lstlisting}
-  void MTB::process(vector<Mat>& res, int max_level, int max_denoise)
-\end{lstlisting}
-
-takes \texttt{cv::Mat} images for input and pass the result by reference. The alignment function transforms these images to 8-bit grayscale ones, while the others may approximately use only the green channel since this channel is higher weighted when converting color. Applying multi-scale techniques, we then form a pyramid of each grayscale photo in which the photos are scaled by a factor of two in each dimension. Consequently, filtering the photos to generate bitmaps thresholded by the median in each photo; thus, the bitmaps can be viewed as black-and-white photos. We can compute the amount of differences between two bitmaps using bitwise XOR, and find the optimal way to shift photos. Finally, scale these photos to crop the blank pixels on the edges resulted from shifting. There might be noisy areas at which the pixel luminance is close to the median; hence, adding a mask to exclude these areas may help following alignment processes. These features are realized by the following functions:
-
-\begin{lstlisting}
-  void MTB::transform_bi(const Mat& m, Mat& bi, Mat& de, int max_denoise)
-  pair<int, int> MTB::align(const int j, int lev, const int max_level)
-\end{lstlisting}
-
-One may refer to \texttt{src/mtb.hpp} and \texttt{src/mtb.cpp} for more details. 
-
-\begin{algorithm}
-\caption{MTB algorithm}
-\begin{algorithmic}[1]
-\Function{MtbProcess}{$pics, max\_level, max\_denoise$}
-	\State $N\gets$ number of $pics$
-	\State $bi\_pics, masks\gets$ new image array with dimension $N$ and $max\_level$
-	\For{$i$ in range($N$)}
-		\State $p\gets pics[i]$
-		\For{$j$ in range($max\_level$)}
-			\State \Call{MtbTransformBi}{$p, bi\_pics[N][j], masks[N][j], max\_denoise$}
-			\State $pic\gets pic$ with half size
-		\EndFor
-	\EndFor
-	\State $offsets\gets$ array of size $N$
-	\ForAll{$i$ in range($N$)}
-		\State $offsets[i]\gets$\Call{MtbAlign}{i, 0, $max\_level$}
-	\EndFor
-	\State Shift $pics$ with $(xshift, yshift)$ pairs in $offsets$
-	\State Scale $pics$ to crop blank pixels
-\EndFunction
-\Statex
-\Function{MtbTransformBi}{$p, bi, de, max\_denoise$}
-	\State $bi, de\gets p$ converted to gray scale
-	\State $m\gets$ median value of all pixel in $bi$
-	\ForAll{pixel $i$ in $bi$}
-		\If{$i.value<m$}
-			\State $i.value\gets gray.value.min$
-		\Else
-			\State $i.value\gets gray.value.max$
-		\EndIf
-	\EndFor
-	\ForAll{pixel $i$ in $de$}
-		\If{$i.value<m-max\_denoise$ or $i.value>m+max\_denoise$}
-			\State $i.value\gets gray.value.max$
-		\Else
-			\State $i.value\gets gray.value.min$
-		\EndIf
-	\EndFor
-\EndFunction
-\Statex
-\Function{MtbAlign}{$i, level, max\_level$}
-	\If{$level$ equals $max\_level$}
-		\State \Return{$(0, 0)$}
-	\EndIf
-	\State $(xshift, yshift)\gets$\Call{MtbAlign}{$i, level+1, max\_level$}
-	\Comment{Call this function recursively}
-	\State $fixed, moved\gets bi[0][level], bi[i][level]$
-	\Comment{Align $pic[i]$ to $pic[0]$}
-	\State $mask\_f, mask\_m\gets masks[0][level], masks[i][level]$
-	\For{$xshift, yshift$ in $[-1, 0, 1]$}
-		\State $moved\_sh\gets moved$ with $(xshift, yshift)$
-		\State $cnt_k\gets$ \# of diff between $fixed$ and $moved\_sh$
-without $mask\_f$ and $mask\_m$ area	
-	\EndFor
-	\State $(xshift\_best, yshift\_best)\gets(xshift, yshift)$ with min\{$cnt_k$\}
-	\State\Return$(xshift*2+xshift\_best, yshift*2+yshift\_best)$
-\EndFunction
-\end{algorithmic}
-\end{algorithm}
+\input{image-alignment}
 
 \subsection{HDR Imaging}
+In our project, we have implemented two methods for HDR imaging: \textbf{Paul Debevec's method} \cite{ref:debevec} and \textbf{Tom Mertens' method} \cite{ref:mertens} (referred to \textbf{Algorithm 2} and \textbf{Algorithm 3}, respectively).
 
 \begin{algorithm}
-\caption{HDR algorithm using Paul Debevec's method}
+\caption{HDR algorithm using Paul Debevec's method \cite{ref:debevec}}
 \begin{algorithmic}[1]
-\State $f\gets$ user parameter for intensity
+\State $etimes\gets$ exposure time of each photos
+\State $lambda\gets$ user parameter for smoothness
+\State $nSample\gets$ user parameter for amount of sampling points
+\State $nPics\gets$ number of photos in $pics$
+\State $points\gets nSample$ points randomly from $pics[0]$
+\Function{HdrDebevec}{$pics, etimes$}
+	\State $w\gets$ hat weighting function with min $=1$ and max $=128$
+	\For{$ch$ in range(3)}
+		\State $X[ch]\gets$ new array of size 256
+		\State $A\gets$ new array of zeros with size $(nSample*nPics+257)\times(nSample+256)$
+		\State $B\gets$new array of zeros with size $(nSample*nPics+257)\times 1$
+		\State $k\gets 0$
+		\For{$i$ in range($nSample$)}
+			\For{$j$ in range($nPics$)}
+				\State $val\gets pics[point[i]]$
+				\State $A[k][val]\gets w[val]$
+				\State $A[k][256+i]\gets-w[val]$
+				\State $B[k][0]\gets w[val]*\log(etimes[j])$
+				\State $k\gets k+1$
+			\EndFor
+		\EndFor
+		\State $A[k][128]\gets 1$
+		\For{$i$ in range(254)}
+			\State $k\gets k+1$
+			\State $A[k][i]\gets lambda*w[i]$
+			\State $A[k][i+1]\gets -2*lambda*w[i]$
+			\State $A[k][i+2]\gets lambda*w[i]$
+		\EndFor
+		\State $X[ch]\gets (A/B)$[0 to 255]
+	\EndFor	
+	\For{$ch$ in range(3)}
+		\For{pixel $i$ in a photo of channel $ch$)}
+			\State $nom\gets$ sum\{$w[i.value]*(pics[p][i.value]-\log(etimes[j]))$ for each photo $pics[p]$\}
+			\State $denom\gets$ sum\{$w[i.value]$ for each photo $pics[p]$\}
+			\State $res[ch][i]\gets\exp(nom/denom)$
+		\EndFor
+	\EndFor
+	\State\Return $res$
+\EndFunction
 \end{algorithmic}
 \end{algorithm}
 
+As mentioned in the class, we construct matrix $A$ and vector $\textbf{b}$, and then compute the solution of $\textbf{x}$ to $A\textbf{x}=\textbf{b}$, where the indice of $A$ and $\textbf{b}$ are calculated from the aligned photos combined with a hat weighting function. Once the response curve recovery is done, we can construct the high dynamic range radiance map according to \cite{ref:debevec}
+$$\ln E_i=g(Z_{ij})-\ln\Delta t_j$$
+For robustness, we choose to reduce noise in the result using the following function rather than the above one
+$$\ln E_i=\frac{\sum_{j=1}^P w(Z_{ij})(g(Z_{ij}-\ln\Delta t_j))}{\sum_{j=1}^Pw(Z_{ij})}$$
+Debevec's method is realized in 
+\begin{lstlisting}
+  void DEBEVEC::process(
+    const vector<Mat>& pics, 
+    const vector<double>& etimes, 
+    const vector<Mat>& gW, 
+    Mat& result
+  )
+\end{lstlisting}
+in which \texttt{gW} is involved for \textbf{ghost removal} feature. We will discuss it in the following sections.
+
+For Mertens' method, 
 One may refer to \texttt{src/hdr.hpp} and \texttt{src/hdr.cpp} for more details.
 
-\newpage
 \subsection{Tone Mapping}
 The algorithm we used is an inspiration from photoreceptor physiology \cite{ref:tone-map}, which can be separated into two concepts: global and local reproduction. The part of global operators considers overall characteristics, such as contrast, brightness, color saturation, and etc., for visual perceptions. On the other hand, the part of local operators focuses on local modifications, such as haloing and ringing.
 

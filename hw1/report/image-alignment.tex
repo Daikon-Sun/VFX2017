@@ -1,0 +1,74 @@
+Before HDR processing, image alignment is involved for better performance. The algorithm we used is shown in \textbf{Algorithm 1}, which is an implementation of \textbf{median threshold bitmap (MTB) algorithm} \cite{ref:Ward}. The function 
+
+\begin{lstlisting}
+  void MTB::process(vector<Mat>& res, int max_level, int max_denoise)
+\end{lstlisting}
+
+takes \texttt{cv::Mat} images for input and pass the result by reference. The alignment function transforms these images to 8-bit grayscale ones, while the others may approximately use only the green channel since this channel is higher weighted when converting color. Applying multi-scale techniques, we then form a pyramid of each grayscale photo in which the photos are scaled by a factor of two in each dimension. Consequently, filtering the photos to generate bitmaps thresholded by the median in each photo; thus, the bitmaps can be viewed as black-and-white photos. We can compute the amount of differences between two bitmaps using bitwise XOR, and find the optimal way to shift photos. Finally, scale these photos to crop the blank pixels on the edges resulted from shifting. There might be noisy areas at which the pixel luminance is close to the median; hence, adding a mask to exclude these areas may help following alignment processes. These features are realized by the following functions:
+
+\begin{lstlisting}
+  void MTB::transform_bi(const Mat& m, Mat& bi, Mat& de, int max_denoise)
+  pair<int, int> MTB::align(const int j, int lev, const int max_level)
+\end{lstlisting}
+
+One may refer to \texttt{src/mtb.hpp} and \texttt{src/mtb.cpp} for more details. 
+
+\begin{algorithm}
+\caption{MTB algorithm \cite{ref:Ward}}
+\begin{algorithmic}[1]
+\Function{MtbProcess}{$pics, max\_level, max\_denoise$}
+	\State $N\gets$ number of $pics$
+	\State $bi\_pics, masks\gets$ new image array with dimension $N$ and $max\_level$
+	\For{$i$ in range($N$)}
+		\State $p\gets pics[i]$
+		\For{$j$ in range($max\_level$)}
+			\State \Call{MtbTransformBi}{$p, bi\_pics[N][j], masks[N][j], max\_denoise$}
+			\State $pic\gets pic$ with half size
+		\EndFor
+	\EndFor
+	\State $offsets\gets$ array of size $N$
+	\ForAll{$i$ in range($N$)}
+		\State $offsets[i]\gets$\Call{MtbAlign}{i, 0, $max\_level$}
+	\EndFor
+	\State Shift $pics$ with $(xshift, yshift)$ pairs in $offsets$
+	\State Scale $pics$ to crop blank pixels
+\EndFunction
+\Statex
+\Function{MtbTransformBi}{$p, bi, de, max\_denoise$}
+	\State $bi, de\gets p$ converted to gray scale
+	\State $m\gets$ median value of all pixel in $bi$
+	\ForAll{pixel $i$ in $bi$}
+		\If{$i.value<m$}
+			\State $i.value\gets gray.value.min$
+		\Else
+			\State $i.value\gets gray.value.max$
+		\EndIf
+	\EndFor
+	\ForAll{pixel $i$ in $de$}
+		\If{$i.value<m-max\_denoise$ or $i.value>m+max\_denoise$}
+			\State $i.value\gets gray.value.max$
+		\Else
+			\State $i.value\gets gray.value.min$
+		\EndIf
+	\EndFor
+\EndFunction
+\Statex
+\Function{MtbAlign}{$i, level, max\_level$}
+	\If{$level$ equals $max\_level$}
+		\State \Return{$(0, 0)$}
+	\EndIf
+	\State $(xshift, yshift)\gets$\Call{MtbAlign}{$i, level+1, max\_level$}
+	\Comment{Call this function recursively}
+	\State $fixed, moved\gets bi[0][level], bi[i][level]$
+	\Comment{Align $pic[i]$ to $pic[0]$}
+	\State $mask\_f, mask\_m\gets masks[0][level], masks[i][level]$
+	\For{$xshift, yshift$ in $[-1, 0, 1]$}
+		\State $moved\_sh\gets moved$ with $(xshift, yshift)$
+		\State $cnt_k\gets$ \# of diff between $fixed$ and $moved\_sh$
+without $mask\_f$ and $mask\_m$ area	
+	\EndFor
+	\State $(xshift\_best, yshift\_best)\gets(xshift, yshift)$ with min\{$cnt_k$\}
+	\State\Return$(xshift*2+xshift\_best, yshift*2+yshift\_best)$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}

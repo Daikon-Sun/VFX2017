@@ -19,13 +19,13 @@ To see simple help message, simply type:
 Here is a detailed explanation of parameters:
 ```
 -h [ --help ]                               Print help message.
-                                            "arg" implies that there should be an adequate amout of argument
-                                            in that position.
+                                            "arg" implies that there should be an adequate amout of
+                                            argument in that position.
                                             Values in the parentheses shows the default value if the user
                                             omit the argument.
--i [ --in_dir ] arg (=input_image)          Input directory (all pictures and input.txt should be under it).
-                                            More explanation about the format of input.txt will be explained
-                                            later.
+-i [ --in_dir ] arg (=input_image)          Input directory (all images and input.txt should be under it).
+                                            More explanation about the format of input.txt will be
+                                            explained later.
 -o [ --out_hdr_file ] arg (=result/out.hdr) Output filename of hdr (including .hdr).
 -j [ --out_jpg_file ] arg (=result/out.jpg) Output filename of jpg (including .jpg).
 -a [ --align ] arg                          Align images before processing using median threshold bitmap.

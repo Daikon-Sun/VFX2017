@@ -4,7 +4,7 @@ using namespace cv;
 using namespace std;
 
 string all_hdr_type[] = {"Debevec"};
-int valid_hdr_cnt[] = {};
+int valid_hdr_cnt[] = {2};
 string all_tonemap_type[] = {"Reinhard"};
 int valid_tonemap_cnt[] = {4};
 string all_fusion_type[] = {"Mertens"};
@@ -28,8 +28,6 @@ int main (int argc, char** argv) {
   int state = parse(argc, argv);
   if(!state) return 0;
   else if(state < 0) return 1;
-  exit(0);
-  assert(argc == 11);
   srand(time(NULL));
   namedWindow("show", WINDOW_NORMAL);
 
@@ -59,8 +57,8 @@ int main (int argc, char** argv) {
   vector<Mat> aligned;
   if(!algn.empty()) {
     cerr << "start alignment";
-    MTB mtb(pics);
-    mtb.process(aligned, algn[0], algn[1]);
+    MTB mtb(algn);
+    mtb.process(pics, aligned);
     cerr << "done" << endl;
   } else {
     aligned = pics;
@@ -70,22 +68,21 @@ int main (int argc, char** argv) {
   Mat ldr, hdr;
   if(!method) {
     cerr << "start hdr-ing";
-    DEBEVEC debevec(aligned, etimes);
-    debevec.process(hdr, hdr_para[0], W);
+    DEBEVEC debevec(hdr_para);
+    debevec.process(aligned, etimes, W, hdr);
     imwrite(out_hdr, hdr);
     cerr << "done" << endl;
   
     cerr << "start tonemapping";
-    TONEMAP tonemap(tonemap_para[0], tonemap_para[1], 
-                    tonemap_para[2] ,tonemap_para[3]);
+    TONEMAP tonemap(tonemap_para);
     tonemap.process(hdr, ldr);
     imwrite(out_jpg, ldr);
     if(verbose) show(ldr);
     cerr << "done" << endl;
   } else if(method == 1) {
     cerr << "start exposure fusion";
-    MERTENS mertens(aligned);
-    mertens.process(ldr, fusion_para[0], fusion_para[1], fusion_para[2], W);
+    MERTENS mertens(fusion_para);
+    mertens.process(aligned, W, ldr);
     imwrite(out_jpg, ldr*255);
     if(verbose) show(ldr);
     cerr << "done" << endl;

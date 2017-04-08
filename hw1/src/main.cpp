@@ -57,7 +57,7 @@ int main (int argc, char** argv) {
   
   vector<Mat> W;
   if(ghost) {
-    cerr << "start ghost-removal...";
+    cerr << "start ghost-removal..." << endl;
     ghost_removal(pics, W);
     cerr << "done" << endl;
   } else {

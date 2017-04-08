@@ -25,7 +25,7 @@ extern vector<double> hdr_para, tonemap_para, fusion_para;
 
 bool check(string str, size_t sz, int i) {
   if((int)sz != i) {
-    cout << str+"should have "+to_string(i)+"argument"+(i>0?"s!":"!") << endl;
+    cout << str+" should have "+to_string(i)+" argument"+(i>0?"s!":"!") << endl;
     return false;
   }
   return true;
@@ -41,7 +41,8 @@ int parse(int ac, char** av) {
        "Output filename of hdr (including .hdr).")
       ("out_jpg_file,j", value<string>(&out_jpg)->default_value(out_jpg),
        "Output filename of jpg (including .jpg).")
-      ("align,a", value< vector<int> >(&algn)->multitoken(),
+      ("align,a",
+       value< vector<int> >(&algn)->multitoken()->default_value(algn, "7 4"),
        "Align images before processing.")
       ("ghost,g", value<bool>()
        ->implicit_value(ghost, ghost?"True":"False")->composing(),

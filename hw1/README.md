@@ -40,14 +40,14 @@ Here is a detailed explanation of parameters:
 --hdr_type arg (=0)                         Type of hdr:
                                               0: Debevec
 --hdr_para arg                              Parameters for the chosen hdr algorithm.
-                                              0(Debevec): there should be two parameters:
+                                              0(Debevec): two parameters:
                                                 weight of smoothness term(lambda) (default=5)
                                                 number of sampled points (default=60)
 
 --tonemape_type arg (=0)                    Type of tonemap:
                                               0:Reinhard
 --tonemap_para arg                          Parameters for the chosen tonemapping algorithm.
-                                              0(Reinhard): there should be four paramters:
+                                              0(Reinhard): four paramters:
                                                 intensity(f) (default=0)
                                                 contrast(m) (default=0)
                                                 light adaption(a) (default=1)
@@ -56,7 +56,7 @@ Here is a detailed explanation of parameters:
 --fusion_type arg (=0)                      Type of exposure fusion:
                                               0:Mertens
 --fusion_para arg                           Parameters for the chosen exposure fusion algorithm.
-                                              0(Mertens): there should be three parameters:
+                                              0(Mertens): three parameters:
                                                 contrast(c) (default=1)
                                                 saturation(s) (default=1)
                                                 well-exposure(e) (default=1)

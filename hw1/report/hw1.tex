@@ -19,8 +19,8 @@
 	rulecolor=\color{codebg},
 	backgroundcolor=\color{codebg},
   language=C++,
-  aboveskip=2.5mm,
-  belowskip=1.5mm,
+  aboveskip=3mm,
+  belowskip=-0.5mm,
   showstringspaces=false,
   columns=flexible,
   basicstyle={\small\ttfamily},
@@ -34,45 +34,44 @@
   breakatwhitespace=true,
   tabsize=3
 }
+
+\setlength\parskip{6pt}
 \setlength\parindent{0pt}
 \linespread{1}
 \renewcommand{\refname}{\vspace{-30pt}}
 
-\title{\bf{VFX Project 1\\\large{High Dynamic Range Imaging}}}
+\title{\bf{VFX Project 1\\\large{High Dynamic Range Imaging}}\vspace{-10pt}}
 \author{Daikon Sun, Shang-Wei Chen}
 \date{}
 \begin{document}
 \maketitle
 \section{Description}
-In this project, we assemble high dynamic range (HDR) images from a series of photographs under various exposures, using a popular vision library, OpenCV, for image processing and I/O. The photographs are preprocesed using median threshold bitmap (MTB) algorithm for image alignment. With the aid of tone mapping algorithm, HDR images are reproduced to LDR images in a better human perceptual sense. We learned basic photographing theories and image processing skills from the project. 
+In this project, we assemble high dynamic range (HDR) images from a series of photographs under various exposures, using a popular vision library, OpenCV, for image processing and I/O. The photographs are preprocessed using median threshold bitmap (MTB) algorithm for image alignment. With the aid of tone mapping algorithm, HDR images are reproduced to LDR images in a better human perceptual sense. We learned basic photographing theories and image processing skills from the project. 
 
 \section{Implementation}
 \subsection{Environment}
 \begin{itemize}
-	\itemsep=0pt
+	\itemsep=-2pt
 	\item Camera: Sony A6000 (lens: Sony SELP1650)
 	\item OS: Linux (Arch, Ubuntu 16.04)
-	\item Tools/Libraries: gcc/g++ 6.3.1, OpenCV 3.2 (C++)
+	\item Tools/Libraries: gcc/g++ 6.3.1, OpenCV 3.2 (C++), Boost $>$ 1.5, Cmake $>$ 3.0
 \end{itemize}
 
 \subsection{Image alignment}
-Before HDR processing, image alignment is involved for better performance.
-The algorithm we used is shown in \textbf{Algorithm 1}, 
-which is an implementation of median threshold bitmap (MTB) algorithm \cite{ref:Ward}.
-The function 
-\begin{lstlisting}
-  MTB::process(vector<Mat>& res, int max_level, int max_denoise)
-\end{lstlisting}
-takes \texttt{cv::Mat} images for input and pass the result by reference.
-The alignment function transforms these images to 8-bit grayscale ones,
-while the others may approximately use only the green channel.
-Applying multi-scale techniques, we then form a pyramid of each grayscale photo 
-in which the photos are scaled by a factor of two in each dimension.
-Consequently, filtering the photos to generate bitmaps thresholded by the median
-in each photo; thus, the bitmaps can be viewed as black-and-white photos.
-We can compute the difference of two bitmaps using bitwise XOR.
+Before HDR processing, image alignment is involved for better performance. The algorithm we used is shown in \textbf{Algorithm 1}, which is an implementation of median threshold bitmap (MTB) algorithm \cite{ref:Ward}. The function 
 
- 
+\begin{lstlisting}
+  void MTB::process(vector<Mat>& res, int max_level, int max_denoise)
+\end{lstlisting}
+
+takes \texttt{cv::Mat} images for input and pass the result by reference. The alignment function transforms these images to 8-bit grayscale ones, while the others may approximately use only the green channel since this channel is higher weighted when converting color. Applying multi-scale techniques, we then form a pyramid of each grayscale photo in which the photos are scaled by a factor of two in each dimension. Consequently, filtering the photos to generate bitmaps thresholded by the median in each photo; thus, the bitmaps can be viewed as black-and-white photos. We can compute the amount of differences between two bitmaps using bitwise XOR, and find the optimal way to shift photos. Finally, scale these photos to crop the blank pixels on the edges resulted from shifting. There might be noisy areas at which the pixel luminance is close to the median; hence, adding a mask to exclude these areas may help following alignment processes. These features are realized by the following functions:
+
+\begin{lstlisting}
+  void MTB::transform_bi(const Mat& m, Mat& bi, Mat& de, int max_denoise)
+  pair<int, int> MTB::align(const int j, int lev, const int max_level)
+\end{lstlisting}
+
+One may refer to \texttt{src/mtb.hpp} and \texttt{src/mtb.cpp} for more details. 
 
 \begin{algorithm}
 \caption{MTB algorithm}
@@ -134,8 +133,6 @@ without $mask\_f$ and $mask\_m$ area
 \end{algorithmic}
 \end{algorithm}
 
-One may refer to \texttt{src/mtb.hpp} and \texttt{src/mtb.cpp} for more details.
-
 \subsection{HDR Imaging}
 
 \begin{algorithm}
@@ -177,6 +174,7 @@ The algorithm we used is an inspiration from photoreceptor physiology \cite{ref:
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
+
 One may refer to \texttt{src/tonemap.hpp} and \texttt{src/tonemap.cpp} for more details.
 
 \section{Results}

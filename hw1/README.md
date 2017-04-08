@@ -1,9 +1,9 @@
 # VFX 2017 hw1 - High Dynamic Range Imaging
-by B09301056 孫凡耕, B03901119, 陳尚緯
+B09301056 孫凡耕, B03901119, 陳尚緯
 
 ## Followings should be installed and versions suggested:
 - gcc/g++ 6.3.1
-- Opencv 3.2
+- **Opencv 3.2**
 - Boost >= 1.5
 - Cmake >= 3.0
 

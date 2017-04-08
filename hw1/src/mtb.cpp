@@ -1,6 +1,10 @@
-#include "mtb.hpp"
+#include <opencv2/opencv.hpp>
 
-void show(const Mat&);
+using namespace std;
+using namespace cv;
+
+#include "util.hpp"
+#include "mtb.hpp"
 
 void MTB::process(vector<Mat>& res, int max_level, int max_denoise) {
   int pics_num = (int)_pics.size();

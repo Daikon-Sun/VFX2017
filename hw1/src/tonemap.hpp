@@ -1,10 +1,5 @@
-#include "opencv2/opencv.hpp"
-
 #ifndef TONEMAP_H
 #define TONEMAP_H
-
-using namespace cv;
-using namespace std;
 
 class TONEMAP {
 public:

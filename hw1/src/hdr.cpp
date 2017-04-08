@@ -1,27 +1,14 @@
+#include <opencv2/opencv.hpp>
+
+using namespace cv;
+using namespace std;
+
+#include "util.hpp"
 #include "hdr.hpp"
 
-void generate_points(const Mat& m, vector<Point>& _points) {
-  constexpr int sam_num = 50, range = 3;
-  _points.reserve(sam_num);
-  while(_points.size() < sam_num) {
-    const int r = rand()%(m.rows-10)+5;
-    const int c = rand()%(m.cols-10)+5;
-    const Vec3b& val = m.at<Vec3b>(r, c);
-    bool same = true;
-    for(int j = r-range; j<=r+range; ++j) for(int k = c-range; k<=c+range; ++k) {
-      if(m.at<Vec3b>(j, k) != val) {
-        same = false;
-        break;
-      }
-    }
-    if( same ) _points.emplace_back(c, r);
-  }
-}
-
-void DEBEVEC::process(Mat& result, double lambda) {
+void DEBEVEC::process(Mat& result, double lambda, vector<Mat>& gW) {
 
   Mat W(1, 256, CV_64FC1);
-  //for(int i = 0; i<256; ++i) W.at<double>(i) = 1-pow(2.0*i/255-1, 20);
   for(int i = 0; i<256; ++i) W.at<double>(i) = (i<=127 ? i+1 : 256-i);
   
   vector<Point> _points;
@@ -66,10 +53,16 @@ void DEBEVEC::process(Mat& result, double lambda) {
     Mat SUM_W(sz, CV_64FC1, Scalar::all(0)), SUM(sz, CV_64FC1, Scalar::all(0));
     for(int i = 0; i<pic_num; ++i) {
       Mat w(sz, CV_64FC1, Scalar::all(0)), val(sz, CV_64FC1, Scalar::all(0));
-      LUT(split_pics[i][c], W, w);
-      LUT(split_pics[i][c], X[c], val);
-      SUM_W += w.mul(val - log(_etimes[i]));
-      SUM += w;
+      if(gW.empty()) {
+        LUT(split_pics[i][c], W, w);
+        LUT(split_pics[i][c], X[c], val);
+        SUM_W += w.mul(val - log(_etimes[i]));
+        SUM += w;
+      } else {
+        LUT(split_pics[i][c], X[c], val);
+        SUM_W += gW[i].mul(val - log(_etimes[i]));
+        SUM += gW[i];
+      }
     }
     exp(SUM_W.mul(1.0f / SUM), res[c]);
     res[c].convertTo(res[c], CV_32FC1);
@@ -77,21 +70,20 @@ void DEBEVEC::process(Mat& result, double lambda) {
   merge(res, result);
 }
 
-void MERTENS::process(Mat& result) {
+void MERTENS::process
+(Mat& result, double wc, double ws, double we, vector<Mat>& gW) {
   int pic_num = (int)_pics.size();
   Size sz = _pics[0].size();
   vector<Mat> W(pic_num);
   Mat ALL_W(sz, CV_64FC1, Scalar::all(0)); 
   vector<Mat> pics(pic_num);
   for(int i = 0; i<pic_num; ++i) {
-    Mat img, gray, C, S = Mat(sz, CV_64FC1, Scalar::all(0));
+    Mat gray, C, S = Mat(sz, CV_64FC1, Scalar::all(0));
     Mat E = Mat(sz, CV_64FC1, Scalar::all(1)), diff, s;
     _pics[i].convertTo(pics[i], CV_64FC3, 1.0/255);
     vector<Mat> split_pic(3);
     split(pics[i], split_pic);
-    pics[i].convertTo(img, CV_32FC3);
-    cvtColor(img, gray, COLOR_BGR2GRAY);
-    gray.convertTo(gray, CV_64FC1);
+    mycvtColor(pics[i], gray);
     //contrast
     Laplacian(gray, C, CV_64FC1);
     C = abs(C);
@@ -109,13 +101,16 @@ void MERTENS::process(Mat& result) {
       E = E.mul(s);
     } 
     W[i] = Mat(sz, CV_64FC1, Scalar::all(1));
-    constexpr double wc = 1, ws = 1, we = 1;
     pow(C, wc, C);
     pow(S, ws, S);
     pow(E, we, E);
     W[i] = W[i].mul(C);
     W[i] = W[i].mul(S);
-    W[i] = W[i].mul(E)+1e-9;
+    if(!gW.empty()) {
+      exp(gW[i], gW[i]);
+      W[i] = W[i].mul(gW[i]);
+    }
+    W[i] = W[i].mul(E)+1e-20;
     ALL_W += W[i];
   }
   Mat up;

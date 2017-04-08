@@ -1,10 +1,5 @@
-#include "opencv2/opencv.hpp"
-
 #ifndef MTB_H
 #define MTB_H
-
-using namespace std;
-using namespace cv;
 
 class MTB {
 
@@ -19,4 +14,5 @@ private:
   const vector<Mat>& _pics;
   vector< vector<Mat> > _bi_pics, _masks;
 };
+
 #endif

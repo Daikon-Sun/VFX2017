@@ -1,3 +1,8 @@
+#include <opencv2/opencv.hpp>
+
+using namespace std;
+using namespace cv;
+
 #include "tonemap.hpp"
 
 void TONEMAP::process(Mat& input, Mat& output) {
@@ -19,8 +24,6 @@ void TONEMAP::process(Mat& input, Mat& output) {
   minMaxLoc(L_img, &Lmin, &Lmax);
   _m = (_m > 0) ? _m :
     0.3 + 0.7 * pow((log(Lmax) - log(Lav)) / (log(Lmax) - log(Lmin)), 1.4);
-
-  cout << _m << endl;
 
   vector<Mat> channels_img; // for calculating channel averages
   split(input, channels_img);

@@ -1,39 +1,42 @@
-#include "opencv2/core.hpp"
-#include "opencv2/highgui.hpp"
-#include "opencv2/imgcodecs.hpp"
-#include "opencv2/opencv.hpp"
+#include <opencv2/opencv.hpp>
 
 using namespace cv;
 using namespace std;
 
-#include "mtb.hpp"
-#include "hdr.hpp"
-#include "tonemap.hpp"
+string all_hdr_type[] = {"Debevec"};
+int valid_hdr_cnt[] = {};
+string all_tonemap_type[] = {"Reinhard"};
+int valid_tonemap_cnt[] = {4};
+string all_fusion_type[] = {"Mertens"};
+int valid_fusion_cnt[] = {3};
 
-void show(const Mat& m) {
-  imshow("show", m);
-  waitKey(0);
-}
-int main (int argc, char* argv[]) {
+string in_dir = "pics";
+string out_hdr = "result/out.hdr";
+string out_jpg = "result/out.jpg";
+int method = 1, hdr_type = 0, tonemap_type = 0, fusion_type = 0;
+bool ghost = false, verbose = false;
+vector<int> algn;
+vector<double> hdr_para = {5}, tonemap_para = {0, 0, 1, 0};
+vector<double> fusion_para = {1, 1, 1};
+
+#include "hdr.hpp"
+#include "mtb.hpp"
+#include "tonemap.hpp"
+#include "util.hpp"
+
+int main (int argc, char** argv) {
+  int state = parse(argc, argv);
+  if(!state) return 0;
+  else if(state < 0) return 1;
+  exit(0);
   assert(argc == 11);
   srand(time(NULL));
   namedWindow("show", WINDOW_NORMAL);
 
-  string in_dir = string(argv[1])+"/";
-  int max_level = atoi(argv[2]);
-  int max_denoise = atoi(argv[3]);
-  double lambda = atof(argv[4]);
-  double f = atof(argv[5]);
-  double m = atof(argv[6]);
-  double a = atof(argv[7]);
-  double c = atof(argv[8]);
-  string out_hdr_file = string(argv[9]);
-  string out_jpg_file = string(argv[10]);
-
   ifstream ifs(in_dir+"input.txt", ifstream::in);
-  int pic_num; ifs >> pic_num; //total number of pictures to be aligned
+  int pic_num; ifs >> pic_num;
   //pic_num = 3; //while debugging
-  vector<Mat> pics(pic_num); //original image
+  vector<Mat> pics(pic_num);
   vector<double> etimes(pic_num);
   for(int i = 0; i<pic_num; ++i) {
     string pic_name; ifs >> pic_name >> etimes[i];
@@ -42,33 +45,49 @@ int main (int argc, char* argv[]) {
   }
   ifs.close();
 
-  cerr << "start alignment...";
-  MTB mtb(pics);
+  vector<Mat> W;
+  if(ghost) {
+    cerr << "start ghost-removal...";
+    ghost_removal(pics, W);
+    cerr << "done" << endl;
+    //for(size_t i = 0; i<W.size(); ++i)
+    //  imwrite("result/weight_"+to_string(i)+".hdr", W[i]);
+  } else {
+    cerr << "skip ghost-removal" << endl;
+  }
+
   vector<Mat> aligned;
-  mtb.process(aligned, max_level, max_denoise);
-  cerr << "done" << endl;
+  if(!algn.empty()) {
+    cerr << "start alignment";
+    MTB mtb(pics);
+    mtb.process(aligned, algn[0], algn[1]);
+    cerr << "done" << endl;
+  } else {
+    aligned = pics;
+    cerr << "skip alignment" << endl;
+  }
   
   Mat ldr, hdr;
-  /*
-  MERTENS mertens(aligned);
-  mertens.process(ldr);
-  show(ldr);
-  imwrite(out_jpg_file, ldr*255);
-  exit(0);
-  */
+  if(!method) {
+    cerr << "start hdr-ing";
+    DEBEVEC debevec(aligned, etimes);
+    debevec.process(hdr, hdr_para[0], W);
+    imwrite(out_hdr, hdr);
+    cerr << "done" << endl;
   
-  //vector<Mat> aligned = pics;
-  cerr << "start hdr-ing...";
-  DEBEVEC debevec(aligned, etimes);
-  debevec.process(hdr, lambda);
-  imwrite(out_hdr_file, hdr);
-  cerr << "done" << endl;
-
-  //ifstream par_in(in_dir+"tonemap_parameter.txt", ifstream::in);
-  //double f, m, a, c;
-  //par_in >> f >> m >> a >> c;
-  TONEMAP tonemap(f, m, a ,c);
-  tonemap.process(hdr, ldr);
-  imwrite(out_jpg_file, ldr);
-  show(ldr);
+    cerr << "start tonemapping";
+    TONEMAP tonemap(tonemap_para[0], tonemap_para[1], 
+                    tonemap_para[2] ,tonemap_para[3]);
+    tonemap.process(hdr, ldr);
+    imwrite(out_jpg, ldr);
+    if(verbose) show(ldr);
+    cerr << "done" << endl;
+  } else if(method == 1) {
+    cerr << "start exposure fusion";
+    MERTENS mertens(aligned);
+    mertens.process(ldr, fusion_para[0], fusion_para[1], fusion_para[2], W);
+    imwrite(out_jpg, ldr*255);
+    if(verbose) show(ldr);
+    cerr << "done" << endl;
+  }
 }

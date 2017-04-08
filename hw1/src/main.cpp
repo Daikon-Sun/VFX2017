@@ -10,7 +10,7 @@ int valid_tonemap_cnt[] = {4};
 string all_fusion_type[] = {"Mertens"};
 int valid_fusion_cnt[] = {3};
 
-string in_dir = "pics";
+string in_dir = "input_image";
 string out_hdr = "result/out.hdr";
 string out_jpg = "result/out.jpg";
 int method = 1, hdr_type = 0, tonemap_type = 0, fusion_type = 0;

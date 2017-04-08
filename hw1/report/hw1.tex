@@ -3,18 +3,43 @@
 \usepackage{enumitem}
 \usepackage{color}
 \usepackage{graphicx}
-\usepackage{fontspec}
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{algorithm}
 \usepackage{algorithmicx}
 \usepackage{algpseudocode}
+\usepackage{listings}
 
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{codebg}{rgb}{0.95,0.95,0.9}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=tb,
+	rulecolor=\color{codebg},
+	backgroundcolor=\color{codebg},
+  language=C++,
+  aboveskip=2.5mm,
+  belowskip=1.5mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+	morekeywords={vector},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3
+}
+\setlength\parindent{0pt}
 \linespread{1}
 \renewcommand{\refname}{\vspace{-30pt}}
 
 \title{\bf{VFX Project 1\\\large{High Dynamic Range Imaging}}}
-\author{hahaha}
+\author{Daikon Sun, Shang-Wei Chen}
 \date{}
 \begin{document}
 \maketitle
@@ -31,10 +56,95 @@ In this project, we assemble high dynamic range (HDR) images from a series of ph
 \end{itemize}
 
 \subsection{Image alignment}
-One can refer to \texttt{src/mtb.hpp} and \texttt{src/mtb.cpp} for more details.
+Before HDR processing, image alignment is involved for better performance.
+The algorithm we used is shown in \textbf{Algorithm 1}, 
+which is an implementation of median threshold bitmap (MTB) algorithm \cite{ref:Ward}.
+The function 
+\begin{lstlisting}
+  MTB::process(vector<Mat>& res, int max_level, int max_denoise)
+\end{lstlisting}
+takes \texttt{cv::Mat} images for input and pass the result by reference.
+The alignment function transforms these images to 8-bit grayscale ones,
+while the others may approximately use only the green channel.
+Applying multi-scale techniques, we then form a pyramid of each grayscale photo 
+in which the photos are scaled by a factor of two in each dimension.
+Consequently, filtering the photos to generate bitmaps thresholded by the median
+in each photo; thus, the bitmaps can be viewed as black-and-white photos.
+
+ 
+
+\begin{algorithm}
+\caption{MTB algorithm}
+\begin{algorithmic}[1]
+\Function{MtbProcess}{$pics, max\_level, max\_denoise$}
+	\State $N\gets$ number of $pics$
+	\State $bi\_pics, masks\gets$ new image array with dimension $N$ and $max\_level$
+	\For{$i$ in range($N$)}
+		\State $p\gets pics[i]$
+		\For{$j$ in range($max\_level$)}
+			\State \Call{MtbTransformBi}{$p, bi\_pics[N][j], masks[N][j], max\_denoise$}
+			\State $pic\gets pic$ with half size
+		\EndFor
+	\EndFor
+	\State $offsets\gets$ array of size $N$
+	\ForAll{$i$ in range($N$)}
+		\State $offsets[i]\gets$\Call{MtbAlign}{i, 0, $max\_level$}
+	\EndFor
+	\State Shift $pics$ with $(xshift, yshift)$ pairs in $offsets$
+	\State Scale $pics$ to crop blank pixels
+\EndFunction
+\Statex
+\Function{MtbTransformBi}{$p, bi, de, max\_denoise$}
+	\State $bi, de\gets p$ converted to gray scale
+	\State $m\gets$ median value of all pixel in $bi$
+	\ForAll{pixel $i$ in $bi$}
+		\If{$i.value<m$}
+			\State $i.value\gets gray.value.min$
+		\Else
+			\State $i.value\gets gray.value.max$
+		\EndIf
+	\EndFor
+	\ForAll{pixel $i$ in $de$}
+		\If{$i.value<m-max\_denoise$ or $i.value>m+max\_denoise$}
+			\State $i.value\gets gray.value.max$
+		\Else
+			\State $i.value\gets gray.value.min$
+		\EndIf
+	\EndFor
+\EndFunction
+\Statex
+\Function{MtbAlign}{$i, level, max\_level$}
+	\If{$level$ equals $max\_level$}
+		\State \Return{$(0, 0)$}
+	\EndIf
+	\State $(xshift, yshift)\gets$\Call{MtbAlign}{$i, level+1, max\_level$}
+	\Comment{Call this function recursively}
+	\State $fixed, moved\gets bi[0][level], bi[i][level]$
+	\Comment{Align $pic[i]$ to $pic[0]$}
+	\State $mask\_f, mask\_m\gets masks[0][level], masks[i][level]$
+	\For{$xshift, yshift$ in $[-1, 0, 1]$}
+		\State $moved\_sh\gets moved$ with $(xshift, yshift)$
+		\State $cnt_k\gets$ \# of diff between $fixed$ and $moved\_sh$
+without $mask\_f$ and $mask\_m$ area	
+	\EndFor
+	\State $(xshift\_best, yshift\_best)\gets(xshift, yshift)$ with min\{$cnt_k$\}
+	\State\Return$(xshift*2+xshift\_best, yshift*2+yshift\_best)$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+One may refer to \texttt{src/mtb.hpp} and \texttt{src/mtb.cpp} for more details.
 
 \subsection{HDR Imaging}
-One can refer to \texttt{src/hdr.hpp} and \texttt{src/hdr.cpp} for more details.
+
+\begin{algorithm}
+\caption{HDR algorithm using Paul Debevec's method}
+\begin{algorithmic}[1]
+\State $f\gets$ user parameter for intensity
+\end{algorithmic}
+\end{algorithm}
+
+One may refer to \texttt{src/hdr.hpp} and \texttt{src/hdr.cpp} for more details.
 
 \newpage
 \subsection{Tone Mapping}
@@ -66,9 +176,9 @@ The algorithm we used is an inspiration from photoreceptor physiology \cite{ref:
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
+One may refer to \texttt{src/tonemap.hpp} and \texttt{src/tonemap.cpp} for more details.
 
-One can refer to \texttt{src/tonemap.hpp} and \texttt{src/tonemap.cpp} for more details.
-
+\section{Results}
 
 \begin{figure}[!ht]
 	\centering

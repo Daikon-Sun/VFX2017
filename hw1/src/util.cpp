@@ -55,17 +55,19 @@ int parse(int ac, char** av) {
        "  1: \texposure fusion\n")
       ("hdr_type", value<int>(&hdr_type)->default_value(hdr_type),
        "Type of hdr:\n"
-       "  0: \tDebevec\n")
+       "  0: \tDebevec")
       ("hdr_para", value< vector<double> >(&hdr_para)->multitoken(),
-       "Parameters for the chosen hdr algorithm.")
+       "Parameters for the chosen hdr algorithm.\n")
+
       ("tonemape_type", value<int>(&tonemap_type)->default_value(tonemap_type),
        "Type of tonemap:\n"
-       "  0:\tReinhard\n")
+       "  0:\tReinhard")
       ("tonemap_para", value< vector<double> >(&tonemap_para)->multitoken(),
-       "Parameters for the chosen tonemapping algorithm.")
+       "Parameters for the chosen tonemapping algorithm.\n")
+
       ("fusion_type", value<int>(&fusion_type)->default_value(fusion_type),
        "Type of exposure fusion:\n"
-       "0:\tMertens\n")
+       "  0:\tMertens")
       ("fusion_para", value< vector<double> >(&fusion_para)->multitoken(),
        "Parameters for the chosen exposure fusion algorithm.");
 

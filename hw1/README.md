@@ -61,9 +61,9 @@ Here is a detailed explanation of parameters:
                                                 saturation(s) (default=1)
                                                 well-exposure(e) (default=1)
 ```
-It should be noted that method 0(hdr) and method 1(exposure fusion) are two different approaches to
-produce high-dynamic images. If method 0 is chosen, beware of hdr_para and tonemap_para. On the
-contrary, beware of fusion_para during exposure fusion.
+It should be noted that `method 0(hdr)` and `method 1(exposure fusion)` are two different approaches to
+produce high-dynamic images. If `method 0` is chosen, beware of `hdr_para` and `tonemap_para`. On the
+contrary, beware of `fusion_para` during `exposure fusion`.
 ### Make sure the followings are in the in_dir:
 - A txt file named `input.txt` which looks like:
 ```

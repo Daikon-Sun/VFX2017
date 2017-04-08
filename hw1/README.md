@@ -56,7 +56,8 @@ Here is a detailed explanation of parameters:
                                                 saturation(s) (default=1)
                                                 well-exposure(e) (default=1)
 ```
-### Make sure the followings are in the pics_dir:
+It should be noted that method 0(hdr) and method 1(exposure fusion) are two different approaches to produce high-dynamic images. If method 0 is chosen, beware of hdr_para and tonemap_para. On the contrary, beware of fusion_para during exposure fusion.
+### Make sure the followings are in the in_dir:
 - A txt file named `input.txt` which looks like:
 ```
 15
@@ -67,12 +68,3 @@ pic2.JPG 2
 The first line contains a number N: the total number of pictures to be computed.
 The following N lines show picture name and exposure time seperated by a space.
 - All the pictures listed in input.txt (case sensitive).
-### Descriptions of all hyper-parameters:
-- mml (mtb_max_level): The maximum level of image pyramid while aligning images using
-  the median threshold bitmap (MTB).
-- mmd (mtb_max_denoise): The threshold whenever a grayscaled pixel value is considered
-  too close to the median, thus the pixel is included in the exclusion bitmap.
-- lambda: The weight on the smoothness term for debevec hdr method.
-- hdr_filename: the output filename for hdr (remember to include ".hdr" at end).
-- jpg_filename: the output filename for hdr (remember to include ".jpg" at end).
-  

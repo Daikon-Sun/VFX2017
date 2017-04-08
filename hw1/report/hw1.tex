@@ -1,0 +1,83 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,  margin=1in]{geometry}
+\usepackage{enumitem}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{fontspec}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{algorithm}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
+
+\linespread{1}
+\renewcommand{\refname}{\vspace{-30pt}}
+
+\title{\bf{VFX Project 1\\\large{High Dynamic Range Imaging}}}
+\author{hahaha}
+\date{}
+\begin{document}
+\maketitle
+\section{Description}
+In this project, we assemble high dynamic range (HDR) images from a series of photographs under various exposures, using a popular vision library, OpenCV, for image processing and I/O. The photographs are preprocesed using median threshold bitmap (MTB) algorithm for image alignment. With the aid of tone mapping algorithm, HDR images are reproduced to LDR images in a better human perceptual sense. We learned basic photographing theories and image processing skills from the project. 
+
+\section{Implementation}
+\subsection{Environment}
+\begin{itemize}
+	\itemsep=0pt
+	\item Camera: Sony A6000 (lens: Sony SELP1650)
+	\item OS: Linux (Arch, Ubuntu 16.04)
+	\item Tools/Libraries: gcc/g++ 6.3.1, OpenCV 3.2 (C++)
+\end{itemize}
+
+\subsection{Image alignment}
+One can refer to \texttt{src/mtb.hpp} and \texttt{src/mtb.cpp} for more details.
+
+\subsection{HDR Imaging}
+One can refer to \texttt{src/hdr.hpp} and \texttt{src/hdr.cpp} for more details.
+
+\newpage
+\subsection{Tone Mapping}
+The algorithm we used is an inspiration from photoreceptor physiology \cite{ref:tone-map}, which can be separated into two concepts: global and local reproduction. The part of global operators considers overall characteristics, such as contrast, brightness, color saturation, and etc., for visual perceptions. On the other hand, the part of local operators focuses on local modifications, such as haloing and ringing.
+
+\begin{algorithm}
+\caption{Tone mapping algorithm \cite{ref:tone-map}}\label{euclid}
+\begin{algorithmic}[1]
+\State $f\gets$ user parameter for intensity
+\State $m\gets$ user parameter for contrast
+\State $a\gets$ user parameter for light adaption 
+\State $c\gets$ user parameter for chromatic adaption
+\Function{Tonemap}{$image\_in$, $image\_out$}
+\State $L\_map\gets$ luminance of each pixel in $image\_in$
+\State $Cav[3]\gets$ mean value of each channels of $image\_in$
+\State $Lav\gets$ mean value of $L\_map$
+\State $L\_min\gets$ minimal value in $L\_map$
+\State $L\_max\gets$ maximal value in $L\_map$
+\ForAll{channel $n$ of $image\_in$}
+\ForAll{pixel $i$ in $image\_in[n]$}
+\State $L\gets$ value of the same position in $L\_map$
+\State $I\_local\gets c* image\_in[n][i]+ (1-c)*L$
+\State $I\_global\gets c*Cav[n]+ (1-c)* Lav$
+\State $I\_adaption\gets a*I\_local+(1-a)*I\_global$
+\State $image\_out[n][i]\gets image\_in[n][i]/(image\_in[n][i]+\mbox{pow}(f*I\_adaption, m))$
+\EndFor
+\EndFor
+\State Normalize the value of pixels in $image\_out$ to an integer in the range from 0 to 255
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+One can refer to \texttt{src/tonemap.hpp} and \texttt{src/tonemap.cpp} for more details.
+
+
+\begin{figure}[!ht]
+	\centering
+	%\subcaptionbox{Ponzo illusion\vspace{5pt}}{\includegraphics[width=.3\linewidth]{Ponzo}}
+	%\caption{782\cite{ref:optical-illusion}}
+	\label{distort}
+\end{figure}
+
+\section{Reference}
+\bibliographystyle{unsrt}
+\bibliography{hw1}
+\end{document}

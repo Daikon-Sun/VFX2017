@@ -45,7 +45,7 @@ int main (int argc, char** argv) {
   ifs.close();
 
   vector<Mat> aligned;
-  if(!algn.empty()) {
+  if(algn[0] >= 0) {
     cerr << "start alignment...";
     MTB mtb(algn);
     mtb.process(pics, aligned);
@@ -76,14 +76,13 @@ int main (int argc, char** argv) {
     TONEMAP tonemap(tonemap_para);
     tonemap.process(hdr, ldr);
     imwrite(out_jpg, ldr);
-    if(verbose) show(ldr);
     cerr << "done" << endl;
   } else if(method == 1) {
     cerr << "start exposure fusion...";
     MERTENS mertens(fusion_para);
     mertens.process(aligned, W, ldr);
     imwrite(out_jpg, ldr*255);
-    if(verbose) show(ldr);
     cerr << "done" << endl;
   }
+  if(verbose) show(ldr);
 }

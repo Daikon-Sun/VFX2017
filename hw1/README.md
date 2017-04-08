@@ -30,6 +30,7 @@ Here is a detailed explanation of parameters:
 -j [ --out_jpg_file ] arg (=result/out.jpg) Output filename of jpg (including .jpg).
 -a [ --align ] arg                          Align images before processing using median threshold bitmap.
                                             Default value of maximum level and denoise margin is 7 and 4. 
+                                            To skip this step, set the maximum level to negative value.
 -g [ --ghost ] [=arg(=False)]               Add ghost-removal mask using EA Khan's method.
 -v [ --verbose ] [=arg(=False)]             Show the final result. If False, image will be saved without
                                             popping out.

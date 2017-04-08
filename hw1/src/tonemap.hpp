@@ -3,10 +3,8 @@
 
 class TONEMAP {
 public:
-  TONEMAP(double f, double m, double a, double c)
-    : _f(exp(-f)), _m(m), _a(a), _c(c) {
-    //TODO: user parameter assertions
-  };
+  TONEMAP(const vector<double>& para)
+    : _f(exp(-para[0])), _m(para[1]), _a(para[2]), _c(para[3]) {};
   void process(Mat&, Mat&);
 private:
   double _f;   // intensity

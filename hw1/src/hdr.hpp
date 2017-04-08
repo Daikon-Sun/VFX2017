@@ -3,21 +3,20 @@
 
 class DEBEVEC {
 public:
-  DEBEVEC(const vector<Mat>& pics, const vector<double>& etimes)
-    : _pics(pics), _etimes(etimes) {};
-  void process(Mat&, double, vector<Mat>&);
+  DEBEVEC(const vector<double>& para) : _para(para) {};
+  void process(const vector<Mat>&, const vector<double>&,
+               const vector<Mat>&, Mat&);
 
 private:
-  const vector<Mat>& _pics;
-  const vector<double>& _etimes;
+  const vector<double> _para;
 };
 class MERTENS {
 public:
-  MERTENS(const vector<Mat>& pics) : _pics(pics) {};
-  void process(Mat&, double, double, double, vector<Mat>&);
+  MERTENS(const vector<double>& para) : _para(para) {};
+  void process(const vector<Mat>&, const vector<Mat>&, Mat&);
 
 private:
-  const vector<Mat>& _pics;
+  const vector<double> _para;
 };
 
 #endif

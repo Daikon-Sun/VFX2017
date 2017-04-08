@@ -6,16 +6,17 @@ using namespace std;
 #include "util.hpp"
 #include "hdr.hpp"
 
-void DEBEVEC::process(Mat& result, double lambda, vector<Mat>& gW) {
-
+void DEBEVEC::process(const vector<Mat>& pics, const vector<double>& etimes,
+                      const vector<Mat>& gW, Mat& result) {
+  const double lambda = _para[0];
   Mat W(1, 256, CV_64FC1);
   for(int i = 0; i<256; ++i) W.at<double>(i) = (i<=127 ? i+1 : 256-i);
   
-  vector<Point> _points;
-  generate_points(_pics[0], _points);
+  vector<Point> points;
+  generate_points(pics[0], _para[1], points);
   
-  int pic_num = (int)_pics.size();
-  int sam_num = (int)_points.size();
+  int pic_num = (int)pics.size();
+  int sam_num = (int)points.size();
   vector<Mat> X(3);
   for(int c = 0; c<3; ++c) {
     X[c] = Mat(256+sam_num, 1, CV_64FC1);
@@ -24,12 +25,12 @@ void DEBEVEC::process(Mat& result, double lambda, vector<Mat>& gW) {
 
     int eq = 0;
     for(int j = 0; j<sam_num; ++j) for(int k = 0; k<pic_num; ++k) {
-      const uchar& val = _pics[k].at<Vec3b>(_points[j])[c];
+      const uchar& val = pics[k].at<Vec3b>(points[j])[c];
       CV_Assert(val>=0 && val<=255);
       const double& w = W.at<double>(val);
       A.at<double>(eq, val) = w;
       A.at<double>(eq, 256+j) = -w;
-      B.at<double>(eq, 0) = w * log(_etimes[k]);
+      B.at<double>(eq, 0) = w * log(etimes[k]);
       ++eq;
     }
     A.at<double>(eq, 128) = 1;
@@ -45,10 +46,10 @@ void DEBEVEC::process(Mat& result, double lambda, vector<Mat>& gW) {
     solve(A, B, X[c], DECOMP_SVD);
     X[c] = X[c].rowRange(0, 256);
   }
-  Size sz = _pics[0].size();
+  Size sz = pics[0].size();
   vector<Mat> res(3);
   vector< vector<Mat> > split_pics(pic_num, vector<Mat>(3));
-  for(int i = 0; i<pic_num; ++i) split(_pics[i], split_pics[i]);
+  for(int i = 0; i<pic_num; ++i) split(pics[i], split_pics[i]);
   for(int c = 0; c<3; ++c) {
     Mat SUM_W(sz, CV_64FC1, Scalar::all(0)), SUM(sz, CV_64FC1, Scalar::all(0));
     for(int i = 0; i<pic_num; ++i) {
@@ -56,11 +57,11 @@ void DEBEVEC::process(Mat& result, double lambda, vector<Mat>& gW) {
       if(gW.empty()) {
         LUT(split_pics[i][c], W, w);
         LUT(split_pics[i][c], X[c], val);
-        SUM_W += w.mul(val - log(_etimes[i]));
+        SUM_W += w.mul(val - log(etimes[i]));
         SUM += w;
       } else {
         LUT(split_pics[i][c], X[c], val);
-        SUM_W += gW[i].mul(val - log(_etimes[i]));
+        SUM_W += gW[i].mul(val - log(etimes[i]));
         SUM += gW[i];
       }
     }
@@ -70,20 +71,20 @@ void DEBEVEC::process(Mat& result, double lambda, vector<Mat>& gW) {
   merge(res, result);
 }
 
-void MERTENS::process
-(Mat& result, double wc, double ws, double we, vector<Mat>& gW) {
-  int pic_num = (int)_pics.size();
-  Size sz = _pics[0].size();
+void MERTENS::process(const vector<Mat>& pics,
+                      const vector<Mat>& gW, Mat& result) {
+  int pic_num = (int)pics.size();
+  Size sz = pics[0].size();
   vector<Mat> W(pic_num);
   Mat ALL_W(sz, CV_64FC1, Scalar::all(0)); 
-  vector<Mat> pics(pic_num);
+  vector<Mat> _pics(pic_num);
   for(int i = 0; i<pic_num; ++i) {
     Mat gray, C, S = Mat(sz, CV_64FC1, Scalar::all(0));
     Mat E = Mat(sz, CV_64FC1, Scalar::all(1)), diff, s;
-    _pics[i].convertTo(pics[i], CV_64FC3, 1.0/255);
+    pics[i].convertTo(_pics[i], CV_64FC3, 1.0/255);
     vector<Mat> split_pic(3);
-    split(pics[i], split_pic);
-    mycvtColor(pics[i], gray);
+    split(_pics[i], split_pic);
+    mycvtColor(_pics[i], gray);
     //contrast
     Laplacian(gray, C, CV_64FC1);
     C = abs(C);
@@ -101,9 +102,9 @@ void MERTENS::process
       E = E.mul(s);
     } 
     W[i] = Mat(sz, CV_64FC1, Scalar::all(1));
-    pow(C, wc, C);
-    pow(S, ws, S);
-    pow(E, we, E);
+    pow(C, _para[0], C);
+    pow(S, _para[1], S);
+    pow(E, _para[2], E);
     W[i] = W[i].mul(C);
     W[i] = W[i].mul(S);
     if(!gW.empty()) {
@@ -119,7 +120,7 @@ void MERTENS::process
   vector< vector<Mat> > pics_pyr(pic_num), W_pyr(pic_num);
   for(int i = 0; i<pic_num; ++i) {
     W[i] /= ALL_W;
-    buildPyramid(pics[i], pics_pyr[i], max_lev);
+    buildPyramid(_pics[i], pics_pyr[i], max_lev);
     buildPyramid(W[i], W_pyr[i], max_lev);
   }
   for(int i = 0; i<=max_lev; ++i)

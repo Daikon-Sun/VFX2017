@@ -44,10 +44,10 @@ int parse(int ac, char** av) {
       ("align,a", value< vector<int> >(&algn)->multitoken(),
        "Align images before processing.")
       ("ghost,g", value<bool>()
-       ->default_value(ghost, ghost?"True":"False")->composing(),
+       ->implicit_value(ghost, ghost?"True":"False")->composing(),
        "Add ghost-removal mask.")
       ("verbose,v", value<bool>()
-       ->default_value(verbose, verbose?"True":"False")->composing(),
+       ->implicit_value(verbose, verbose?"True":"False")->composing(),
        "Show the final result.")
       ("method,m", value<int>(&method)->default_value(method),
        "Method to produce high-dynamic range image:\n"
@@ -102,8 +102,8 @@ void show(const Mat& m) {
   imshow("show", m);
   waitKey(0);
 }
-void generate_points(const Mat& m, vector<Point>& _points) {
-  constexpr int sam_num = 50, rng = 3;
+void generate_points(const Mat& m, int sam_num, vector<Point>& _points) {
+  const int rng = 3;
   _points.reserve(sam_num);
   while(_points.size() < sam_num) {
     const int r = rand()%(m.rows-10)+5;

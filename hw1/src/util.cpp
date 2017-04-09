@@ -112,7 +112,7 @@ int parse(int ac, char** av) {
   return 1;
 }
 void generate_points(const Mat& m, int sam_num, vector<Point>& _points) {
-  const int rng = 3;
+  const int rng = 0;
   _points.reserve(sam_num);
   while(_points.size() < sam_num) {
     const int r = rand()%(m.rows-10)+5;
@@ -136,14 +136,14 @@ void mycvtColor(const Mat& m, Mat& src) {
 inline double kernel(const Vec5d& v1, const Vec5d& v2) {
   double sum = 0;
   for(int i = 0; i<5; ++i) sum += (v1[i]-v2[i])*(v1[i]-v2[i]);
-  double rtn = _2pi*exp(-0.5 * sum);
-  return rtn;
+  return _2pi*exp(-0.5 * sum);
 }
-void ghost_removal(const vector<Mat>& pics, int iter, vector<Mat>& result) {
+void
+ghost_removal(const vector<Mat>& pics, const int iter, vector<Mat>& result) {
   const int neigh = 1, pic_num = (int)pics.size();
   const int cols = pics[0].cols, rows = pics[0].rows;
   const Size sz = pics[0].size();
-  Mat w(Size(256, 1), CV_64FC1, Scalar::all(0));
+  Mat w(1, 256, CV_64FC1);
   for(int i = 0; i<256; ++i) w.at<double>(i) = (1 - pow(2.0*i/255-1, 12));
 
   vector<Mat> W(pic_num), merged(pic_num), W_Z(pic_num);
@@ -151,17 +151,17 @@ void ghost_removal(const vector<Mat>& pics, int iter, vector<Mat>& result) {
   Mat x(sz, CV_64FC1, Scalar::all(0));
   Mat y(sz, CV_64FC1, Scalar::all(0));
   for(int i = 0; i<rows; ++i) for(int j = 0; j<cols; ++j) {
-    x.at<double>(i, j) = double(j);//(cols-1);
-    y.at<double>(i, j) = double(i);//(rows-1);
+    x.at<double>(i, j) = double(j)/(cols-1);
+    y.at<double>(i, j) = double(i)/(rows-1);
   }
   for(int i = 0; i<pic_num; ++i) {
     split_pics.push_back(vector<Mat>(3));
     cvtColor(pics[i], merged[i], COLOR_BGR2Lab);
     merged[i].convertTo(merged[i], CV_64FC3);
-    //merged[i] /= 255.0;
+    merged[i] /= 255.0;
     split(merged[i], split_pics[i]);
-    split_pics[i].push_back(x);
-    split_pics[i].push_back(y);
+    split_pics[i].push_back(x.clone());
+    split_pics[i].push_back(y.clone());
     merge(split_pics[i], merged[i]);
 
     vector<Mat> Ws(3);
@@ -174,7 +174,7 @@ void ghost_removal(const vector<Mat>& pics, int iter, vector<Mat>& result) {
     cerr << "iter: " << i << endl;
     vector<Mat> P;
     for(int j = 0; j<pic_num; ++j) {
-      cerr << "pic: " << j << endl;
+      //cerr << "pic: " << j << endl;
       P.push_back(Mat(sz, CV_64FC1, Scalar::all(0)));
       for(int c = neigh; c+neigh<cols; ++c) {
         for(int r = neigh; r+neigh<rows; ++r) {
@@ -193,7 +193,9 @@ void ghost_removal(const vector<Mat>& pics, int iter, vector<Mat>& result) {
         }
       }
     }
-    for(int j = 0; j<pic_num; ++j) W[j] = W_Z[j].mul(P[j]);
+    for(int j = 0; j<pic_num; ++j) {
+      W[j] = W_Z[j].mul(P[j]);
+    }
   }
   result.resize(pic_num);
   for(int i = 0; i<pic_num; ++i) W[i].copyTo(result[i]);
@@ -328,6 +330,7 @@ void add_spotlight(vector<Mat>& pics, const vector<double>& para) {
     for(int j = 0; j<(int)para.size(); j+=4) {
       Mat res;
       Rect roi(para[j], para[j+1], para[j+2], para[j+3]);
+      cerr << roi << endl;
       Mat msk(pics[0].size(), CV_8UC1, Scalar::all(0));
       msk(roi) = 255;
       seamlessClone(pics[0], pics[i], msk,

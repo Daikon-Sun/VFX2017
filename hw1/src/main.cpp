@@ -69,22 +69,23 @@ int main (int argc, char** argv) {
   } else {
     cerr << "skip blob-removal" << endl;
   }
-
+  /*
   namedWindow("show", WINDOW_NORMAL);
   for(auto& p:pics) {
     imshow("show", p);
     waitKey(0);
   }
+  */
 
   vector<Mat> W;
-  if(ghost >= 0) {
+  if(ghost > 0) {
     cerr << "start ghost-removal...";
     ghost_removal(pics, ghost, W);
     cerr << "done" << endl;
   } else {
     cerr << "skip ghost-removal" << endl;
   }
-  
+   
   if(!spotlight.empty()) {
     cerr << "start spotlight-ing..." << endl;
     add_spotlight(pics, spotlight);

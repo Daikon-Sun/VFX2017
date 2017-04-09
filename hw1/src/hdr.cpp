@@ -10,7 +10,8 @@ void DEBEVEC::process(const vector<Mat>& pics, const vector<double>& etimes,
                       const vector<Mat>& gW, Mat& result) {
   const double lambda = _para[0];
   Mat W(1, 256, CV_64FC1);
-  for(int i = 0; i<256; ++i) W.at<double>(i) = (i<=127 ? i+1 : 256-i);
+  for(int i = 0; i<256; ++i) W.at<double>(i) = (1 - pow(2.0*i/255-1, 12));
+  //for(int i = 0; i<256; ++i) W.at<double>(i) = (i<=127 ? i+1 : 256-i);
   
   vector<Point> points;
   generate_points(pics[0], _para[1], points);
@@ -45,6 +46,9 @@ void DEBEVEC::process(const vector<Mat>& pics, const vector<double>& etimes,
     }
     solve(A, B, X[c], DECOMP_SVD);
     X[c] = X[c].rowRange(0, 256);
+    for(int i = 0; i<256; ++i)
+      cout << i << " " << X[c].at<double>(i) << endl;
+    cout << "---------------------------------------" << endl;
   }
   Size sz = pics[0].size();
   vector<Mat> res(3);

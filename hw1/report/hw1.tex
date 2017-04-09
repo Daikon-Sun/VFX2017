@@ -44,23 +44,22 @@
 \renewcommand\floatpagefraction{0.85}
 
 \title{\bf{VFX Project 1\\\large{High Dynamic Range Imaging}}\vspace{-10pt}}
-\author{Daikon Sun, Shang-Wei Chen}
+\author{B03901056 Fan-Keng Sun, B03901119 Shang-Wei Chen}
 \date{}
-
+  
 \begin{document}
 \maketitle
 \section{Description}
-In this project, we assemble high dynamic range (HDR) images from a series of photographs under various exposures, using a popular vision library, OpenCV, for image processing and I/O. The photographs are preprocessed using median threshold bitmap (MTB) algorithm for image alignment. With the aid of tone mapping algorithm, HDR images are reproduced to LDR images in a better human perceptual sense. We learned basic photographing theories and image processing skills from the project. 
-
-The features we have implemented are:
+In this project, we assemble high dynamic range (HDR) images from a series of photographs under various exposures, using a popular vision library, OpenCV, for image processing and I/O. The photographs are preprocessed using median threshold bitmap (MTB) algorithm for image alignment. With the aid of tone mapping algorithm, HDR images are reproduced to LDR images in a better human perceptual sense. We learned basic photographing theories and image processing skills from the project. The features we have implemented are:
 \vspace{-8pt}
 \begin{itemize}
   \itemsep=-2pt
   \item Image alignment: MTB algorithm.
-  \item HDR imaging: Paul Debevec's method, Tom Mertens' method.
+  \item HDR imaging: Paul Debevec's method.
   \item Tone mapping: Erik Reinhard's method.
+  \item Exposure fusion: Tom Mertens' method.
   \item Blob removal
-  \item Ghost removal: Erum Arif Khan's method.
+  \item Ghost removal: EA Khan's method.
   \item Spotlighting
 \end{itemize}
 \vspace{-8pt}
@@ -70,8 +69,8 @@ The features we have implemented are:
 \begin{itemize}
   \itemsep=-2pt
   \item Camera: Sony A6000 (lens: Sony SELP1650)
-  \item OS: Linux (Arch, Ubuntu 16.04)
-  \item Tools/Libraries: gcc/g++ 6.3.1, OpenCV 3.2 (C++), Boost $>$ 1.5, Cmake $>$ 3.0
+  \item OS: Linux (Archlinux 4.10, Ubuntu 16.04)
+  \item Tools/Libraries: gcc/g++ 6.3.1, OpenCV 3.2 (C++), Boost $>=$ 1.5, Cmake $>=$ 3.0
 \end{itemize}
 
 \subsection{Image alignment}
@@ -104,6 +103,13 @@ Since \texttt{cv::SimpleBlobDetector} provides many parameters for blob detectio
 \end{figure}
 
 Once the blobs are detected, we approximately fill out these areas with the average colors nearby. For more details, one can refer to \texttt{src/util.hpp} and \texttt{src/util.cpp}. 
+
+\subsection{Ghost Removal}
+The feature is realized in the following function
+\begin{lstlisting}
+  void ghost_removal(const vector<Mat>& pics, vector<Mat>& result)
+\end{lstlisting}
+which is an implementation of \textbf{EA Khan's method} \cite{ref:ghost-removal}.
 
 \section{Results}
 

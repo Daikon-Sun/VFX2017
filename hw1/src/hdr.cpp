@@ -115,22 +115,21 @@ void MERTENS::process(const vector<Mat>& pics,
     ALL_W += W[i];
   }
   Mat up;
-  constexpr int max_lev = 7;
-  vector<Mat> final_pics(max_lev + 1);
+  vector<Mat> final_pics(_para[3] + 1);
   vector< vector<Mat> > pics_pyr(pic_num), W_pyr(pic_num);
   for(int i = 0; i<pic_num; ++i) {
     W[i] /= ALL_W;
-    buildPyramid(_pics[i], pics_pyr[i], max_lev);
-    buildPyramid(W[i], W_pyr[i], max_lev);
+    buildPyramid(_pics[i], pics_pyr[i], _para[3]);
+    buildPyramid(W[i], W_pyr[i], _para[3]);
   }
-  for(int i = 0; i<=max_lev; ++i)
+  for(int i = 0; i<=_para[3]; ++i)
     final_pics[i] = Mat(pics_pyr[0][i].size(), CV_64FC3, Scalar::all(0));
   for(int i = 0; i<pic_num; ++i) {
-    for(int j = 0; j<max_lev; ++j) {
+    for(int j = 0; j<_para[3]; ++j) {
       pyrUp(pics_pyr[i][j+1], up,  pics_pyr[i][j].size());
       pics_pyr[i][j] -= up;
     }
-    for(int j = 0; j<=max_lev; ++j) {
+    for(int j = 0; j<=_para[3]; ++j) {
       vector<Mat> split_pics_pyr(3);
       split(pics_pyr[i][j], split_pics_pyr);
       for(int c = 0; c<3; ++c) 
@@ -139,7 +138,7 @@ void MERTENS::process(const vector<Mat>& pics,
       final_pics[j] += pics_pyr[i][j];
     }
   }
-  for(int i = max_lev-1; i>=0; --i) {
+  for(int i = _para[3]-1; i>=0; --i) {
     pyrUp(final_pics[i+1], up, final_pics[i].size());
     final_pics[i] += up;
   }

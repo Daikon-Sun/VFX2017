@@ -73,6 +73,7 @@ Here is a detailed explanation of parameters:
                                                 contrast(c) (default=1)
                                                 saturation(s) (default=1)
                                                 well-exposure(e) (default=1)
+                                                maximum process level (default=8)
 ```
 It should be noted that `method 0(hdr)` and `method 1(exposure fusion)` are two different approaches to
 produce high-dynamic images. If `method 0` is chosen, beware of `hdr_para` and `tonemap_para`. On the

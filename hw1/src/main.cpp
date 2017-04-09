@@ -8,7 +8,7 @@ int valid_hdr_cnt[] = {2};
 string all_tonemap_type[] = {"Reinhard"};
 int valid_tonemap_cnt[] = {4};
 string all_fusion_type[] = {"Mertens"};
-int valid_fusion_cnt[] = {3};
+int valid_fusion_cnt[] = {4};
 
 string in_dir = "input_image";
 string out_hdr = "result/out.hdr";
@@ -17,7 +17,7 @@ int method = 1, hdr_type = 0, tonemap_type = 0, fusion_type = 0;
 bool ghost = false, verbose = false, blob = false, blob_tune = false;
 vector<int> algn = {7, 4};
 vector<double> hdr_para = {5, 60}, tonemap_para = {0, 0, 1, 0};
-vector<double> fusion_para = {1, 1, 1};
+vector<double> fusion_para = {1, 1, 1, 8};
 
 #include "hdr.hpp"
 #include "mtb.hpp"

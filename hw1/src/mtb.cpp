@@ -9,8 +9,8 @@ using namespace cv;
 void MTB::process(const vector<Mat>& pics, vector<Mat>& res) {
   int max_level = _para[0], max_denoise = _para[1];
   int pics_num = (int)pics.size();
-  _bi_pics.resize(pics_num); //0-or-255 image after thresholding
-  _masks.resize(pics_num); //mask to de-noise
+  _bi_pics.resize(pics_num);
+  _masks.resize(pics_num);
   for(int i = 0; i<pics_num; ++i) {
     _bi_pics[i].resize(max_level);
     _masks[i].resize(max_level);

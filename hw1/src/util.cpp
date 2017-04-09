@@ -19,11 +19,11 @@ extern string all_fusion_type[];
 extern int valid_fusion_cnt[];
 extern string in_dir, out_hdr, out_jpg;
 extern int method, hdr_type, tonemap_type, fusion_type;
-extern bool ghost, verbose;
+extern bool ghost, verbose, blob;
 extern vector<int> algn;
 extern vector<double> hdr_para, tonemap_para, fusion_para;
 
-bool check(string str, size_t sz, int i) {
+inline bool check(string str, size_t sz, int i) {
   if((int)sz != i) {
     cout << str+" should have "+to_string(i)+" argument"+(i>0?"s!":"!") << endl;
     return false;
@@ -47,6 +47,9 @@ int parse(int ac, char** av) {
       ("ghost,g", value<bool>()
        ->implicit_value(ghost, ghost?"True":"False")->composing(),
        "Add ghost-removal mask.")
+      ("blob,b", value<bool>()
+       ->implicit_value(blob, blob?"True":"False")->composing(),
+       "Add blob-removal.")
       ("verbose,v", value<bool>()
        ->implicit_value(verbose, verbose?"True":"False")->composing(),
        "Show the final result.")
@@ -99,6 +102,7 @@ int parse(int ac, char** av) {
   }
   verbose = vm.count("verbose");
   ghost = vm.count("ghost");
+  blob = vm.count("blob");
   return 1;
 }
 void show(const Mat& m) {
@@ -127,7 +131,7 @@ void mycvtColor(const Mat& m, Mat& src) {
   split(m, splits);
   src = (splits[0]*0.114 + splits[1]*0.587 + splits[2]*0.299)/3;
 }
-double kernel(const Vec5d& v1, const Vec5d& v2) {
+inline double kernel(const Vec5d& v1, const Vec5d& v2) {
   double sum = 0;
   for(int i = 0; i<5; ++i) sum += (v1[i]-v2[i])*(v1[i]-v2[i]);
   double rtn = _2pi*exp(-0.5 * sum);
@@ -191,4 +195,59 @@ void ghost_removal(const vector<Mat>& pics, vector<Mat>& result) {
   }
   result.resize(pic_num);
   for(int i = 0; i<pic_num; ++i) W[i].copyTo(result[i]);
+}
+void blob_removal(const Mat& pic, Mat& result) {
+  
+  const int cols = pic.cols, rows = pic.rows;
+  Mat res;
+  pic.copyTo(res);
+  int lowL = 0, lowA = 0, lowB = 0, highL = 40, highA = 255, highB = 255;
+  for(; highL <= 72; highL+=4) {
+    Mat m;
+    cvtColor(res, m, CV_BGR2Lab);
+    SimpleBlobDetector::Params params;
+    inRange(m, Scalar(lowL, lowA, lowB), Scalar(highL, highA, highB), m);
+    
+    Mat se = getStructuringElement(CV_SHAPE_ELLIPSE, Size(7, 7), Point(-1, -1));
+    morphologyEx(m, m, MORPH_CLOSE, se);
+    bitwise_not(m, m);
+
+    int minA = 400, maxA = 2500;
+    double minCircularity = 0.41, minConvexity = 0.41, minInertiaRatio = 0.41;
+    params.filterByArea = true;
+    params.minArea = minA;
+    params.maxArea = maxA;
+    params.filterByCircularity = true;
+    params.minCircularity = minCircularity;
+    params.filterByConvexity = true;
+    params.minConvexity = minConvexity;
+    params.filterByInertia = true;
+    params.minInertiaRatio = minInertiaRatio;
+    params.minDistBetweenBlobs = 500;
+
+    Ptr<SimpleBlobDetector> detector = SimpleBlobDetector::create(params);
+    vector<KeyPoint> keypoints;
+    detector->detect(m, keypoints);
+    const double f = 0.9;
+    for(auto& k:keypoints) {
+      if(k.pt.x<f*1.5*k.size || k.pt.y<f*1.5*k.size ||
+         k.pt.x+f*1.5*k.size>=cols || k.pt.y+f*1.5*k.size>=rows) continue;
+      Mat target(Size(f*k.size, f*k.size), CV_64FC3, Scalar::all(0));
+      for(int c = -1; c<=1; ++c) for(int r = -1; r<=1; ++r) {
+        if(c || r) {
+          int cc = k.pt.x-f/2*k.size+c*f*k.size;
+          int rr = k.pt.y-f/2*k.size+r*f*k.size;
+          Rect roi(cc, rr, f*k.size, f*k.size);
+          Mat tmp = res(roi).clone();
+          tmp.convertTo(tmp, CV_64FC3);
+          target += tmp;
+        }
+      }
+      target /= 8;
+      target.convertTo(target, CV_8UC3);
+      target.copyTo(
+          res(Rect(k.pt.x-f/2*k.size, k.pt.y-f/2*k.size, f*k.size, f*k.size)));
+    }
+  }
+  res.copyTo(result);
 }

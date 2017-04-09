@@ -7,5 +7,6 @@ void generate_points(const Mat&, int, vector<Point>&);
 void show(const Mat&);
 void mycvtColor(const Mat&, Mat&);
 void ghost_removal(const vector<Mat>&, vector<Mat>&);
+void blob_removal(const Mat&, Mat&);
 
 #endif

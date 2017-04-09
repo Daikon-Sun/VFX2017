@@ -32,6 +32,10 @@ Here is a detailed explanation of parameters:
                                             Default value of maximum level and denoise margin is 7 and 4. 
                                             To skip this step, set the maximum level to negative value.
 -g [ --ghost ] [=arg(=False)]               Add ghost-removal mask using EA Khan's method.
+-b [ --blob ] [=arg(=False)]                Add blob-removal using OpenCV's SimpleBlobDetector with 
+                                            specifically fine tuned paramters. This means unless you 
+                                            have found a good set of parameters for your pictures, or else
+                                            blob-removal may worsen picture quality.
 -v [ --verbose ] [=arg(=False)]             Show the final result. If False, image will be saved without
                                             popping out.
 -m [ --method ] arg (=1)                    Method to produce high-dynamic range image:
@@ -75,4 +79,5 @@ pic2.JPG 2
 ```
 The first line contains a number N: the total number of pictures to be computed.
 The following N lines show picture name and exposure time seperated by a space.
-- All the pictures listed in input.txt (case sensitive).
+- All the pictures listed in input.txt (case sensitive). Beware that the first image listed will be the
+  pivoted(fixed) one during the alignment.

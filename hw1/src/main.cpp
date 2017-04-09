@@ -14,7 +14,7 @@ string in_dir = "input_image";
 string out_hdr = "result/out.hdr";
 string out_jpg = "result/out.jpg";
 int method = 1, hdr_type = 0, tonemap_type = 0, fusion_type = 0;
-bool ghost = false, verbose = false;
+bool ghost = false, verbose = false, blob = false;
 vector<int> algn = {7, 4};
 vector<double> hdr_para = {5, 60}, tonemap_para = {0, 0, 1, 0};
 vector<double> fusion_para = {1, 1, 1};
@@ -43,6 +43,14 @@ int main (int argc, char** argv) {
     CV_Assert(!pics[i].empty());
   }
   ifs.close();
+
+  if(blob) {
+    cerr << "start blob-removal...";
+    for(int i = 0; i<pic_num; ++i) blob_removal(pics[i], pics[i]);
+    cerr << "done" << endl;
+  } else {
+    cerr << "skip blob-removal" << endl;
+  }
 
   vector<Mat> aligned;
   if(algn[0] >= 0) {

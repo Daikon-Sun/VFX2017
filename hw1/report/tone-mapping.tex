@@ -1,0 +1,41 @@
+We realize this part by \textbf{Erik Reinhard's method} \cite{ref:tone-map}, which is shown in \textbf{Algorithm 4}. The algorithm we used is an inspiration from photoreceptor physiology, which can be separated into two concepts: global and local reproduction. The part of global operators considers overall characteristics, such as contrast, brightness, color saturation, and etc., for visual perceptions. On the other hand, the part of local operators focuses on local modifications, such as haloing and ringing.
+\begin{lstlisting}
+  void TONEMAP::process(Mat& input, Mat& output)
+\end{lstlisting}
+One may refer to \texttt{src/tonemap.hpp} and \texttt{src/tonemap.cpp} for more details.
+
+\begin{algorithm}
+\caption{Tone mapping algorithm \cite{ref:tone-map}}\label{euclid}
+\begin{algorithmic}[1]
+\State $f\gets$ user parameter for intensity
+\State $m\gets$ user parameter for contrast
+\State $a\gets$ user parameter for light adaption 
+\State $c\gets$ user parameter for chromatic adaption
+\algstore{myalg3}
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\begin{algorithmic}[1]
+\algrestore{myalg3}
+\Function{Tonemap}{$image\_in$, $image\_out$}
+\State $L\_map\gets$ luminance of each pixel in $image\_in$
+\State $Cav[3]\gets$ mean value of each channels of $image\_in$
+\State $Lav\gets$ mean value of $L\_map$
+\State $L\_min\gets$ minimal value in $L\_map$
+\State $L\_max\gets$ maximal value in $L\_map$
+\ForAll{channel $n$ of $image\_in$}
+\ForAll{pixel $i$ in $image\_in[n]$}
+\State $L\gets$ value of the same position in $L\_map$
+\State $I\_local\gets c* image\_in[n][i]+ (1-c)*L$
+\State $I\_global\gets c*Cav[n]+ (1-c)* Lav$
+\State $I\_adaption\gets a*I\_local+(1-a)*I\_global$
+\State $image\_out[n][i]\gets image\_in[n][i]/(image\_in[n][i]+\mbox{pow}(f*I\_adaption, m))$
+\EndFor
+\EndFor
+\State Normalize the value of pixels in $image\_out$ to an integer in the range from 0 to 255
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+

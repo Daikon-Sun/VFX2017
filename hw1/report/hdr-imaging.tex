@@ -1,0 +1,133 @@
+In our project, we have implemented two methods for HDR imaging: \textbf{Paul Debevec's method} \cite{ref:debevec} and \textbf{Tom Mertens' method} \cite{ref:mertens} (referred to \textbf{Algorithm 2} and \textbf{Algorithm 3}, respectively).
+
+As mentioned in the class, we construct matrix $A$ and vector $\textbf{b}$, and then compute the solution of $\textbf{x}$ to $A\textbf{x}=\textbf{b}$, where the indice of $A$ and $\textbf{b}$ are calculated from the aligned photos combined with a hat weighting function. Once the response curve recovery is done, we can construct the high dynamic range radiance map according to \cite{ref:debevec}
+$$\ln E_i=g(Z_{ij})-\ln\Delta t_j$$
+For robustness, we choose to reduce noise in the result using the following function rather than the above one
+$$\ln E_i=\frac{\sum_{j=1}^P w(Z_{ij})(g(Z_{ij}-\ln\Delta t_j))}{\sum_{j=1}^Pw(Z_{ij})}$$
+Debevec's method is realized in 
+\begin{lstlisting}
+  void DEBEVEC::process(
+    const vector<Mat>& pics, 
+    const vector<double>& etimes, 
+    const vector<Mat>& gW, 
+    Mat& result
+  )
+\end{lstlisting}
+in which the parameter \texttt{gW} is involved for \textbf{ghost removal} feature. We will discuss it in the following sections.
+
+\begin{algorithm}
+\caption{HDR algorithm using Paul Debevec's method \cite{ref:debevec}}
+\begin{algorithmic}[1]
+\State $etimes\gets$ exposure time of each photos
+\State $lambda\gets$ user parameter for smoothness
+\State $nSample\gets$ user parameter for amount of sampling points
+\State $nPics\gets$ number of photos in $pics$
+\State $points\gets nSample$ points randomly from $pics[0]$
+\Function{HdrDebevec}{$pics, etimes$}
+  \State $w\gets$ hat weighting function with min $=1$ and max $=128$
+  \For{$ch$ in range(3)}
+    \State $X[ch]\gets$ new array of size 256
+    \State $A\gets$ new array of zeros with size $(nSample*nPics+257)\times(nSample+256)$
+    \State $B\gets$new array of zeros with size $(nSample*nPics+257)\times 1$
+    \State $k\gets 0$
+    \For{$i$ in range($nSample$)}
+      \For{$j$ in range($nPics$)}
+        \State $val\gets pics[point[i]]$
+        \State $A[k][val]\gets w[val]$
+        \State $A[k][256+i]\gets-w[val]$
+        \State $B[k][0]\gets w[val]*\log(etimes[j])$
+        \State $k\gets k+1$
+      \EndFor
+    \EndFor
+    \State $A[k][128]\gets 1$
+    \algstore{myalg}
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\begin{algorithmic}[1]
+    \algrestore{myalg}
+    \For{$i$ in range(254)}
+      \State $k\gets k+1$
+      \State $A[k][i]\gets lambda*w[i]$
+      \State $A[k][i+1]\gets -2*lambda*w[i]$
+      \State $A[k][i+2]\gets lambda*w[i]$
+    \EndFor
+    \State $X[ch]\gets (A/B)$[0 to 255]
+  \EndFor	
+  \For{$ch$ in range(3)}
+    \For{pixel $i$ in a photo of channel $ch$)}
+      \State $nom\gets$ sum\{$w[i.value]*(pics[p][i.value]-\log(etimes[j]))$ for each photo $pics[p]$\}
+      \State $denom\gets$ sum\{$w[i.value]$ for each photo $pics[p]$\}
+      \State $res[ch][i]\gets\exp(nom/denom)$
+    \EndFor
+  \EndFor
+  \State\Return $res$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\newpage 
+For Mertens' method \cite{ref:mertens}, \textbf{exposure fusion}, the algorithm keeps the best parts of each photos under various exposure realizing with weighted blending. In the first part, we compute some quality measures, \textbf{contrast}, \textbf{saturation}, and \textbf{well-exposedness}, for the purpose of producing a weighting function.
+$$ W_{ij,k}=(C_{ij,k})^{\omega_C}*(S_{ij,k})^{\omega_S}*(E_{ij,k})^{\omega_E} $$
+in which the qualities, contrast ($C$), saturation ($S$), and well-exposedness ($E$) are given with different weighting exponents $\omega_C$, $\omega_S$, and $\omega_E$, respectively. 
+In the next part, fusion, we compute $N$ normalized weight maps from above quantities
+$$\hat{W}_{ij,k}= \left[ \sum_{k'=1}^N W_{ij,k'} \right]^{-1}{W}_{ij,k}$$
+The method then compute Laplacian pyramids and Gaussian pyrymids of the input images. Summing up their product of each photos to obtain the fused pyramid, we can recover the final image:
+$$ \textbf{L}\{R\}^l_{ij}=\sum_{k=1}^N\textbf{G}\{\hat{W}\}^l_{ij,k}\textbf{L}\{I\}^l_{ij,k} $$
+where $R$ stands for the result image, and $l$ for the level of pyramids. Finally, collapse the Laplacian pyramids to obtain HDR result. Mertens' method is realized in 
+\begin{lstlisting}
+  void MERTENS::process(
+    const vector<Mat>& pics,
+    const vector<Mat>& gW, 
+    Mat& result
+  )
+\end{lstlisting}
+One may refer to \texttt{src/hdr.hpp} and \texttt{src/hdr.cpp} for more details.
+
+\begin{algorithm}
+\caption{HDR algorithm using Tom Mertens's method \cite{ref:mertens}}
+\begin{algorithmic}[1]
+\State $wC, wS, wE\gets$ user parameters for weighting functions
+\State $max\_level\gets$ user parameter for building pyramids
+\algstore{myalg2}
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\begin{algorithmic}[1]
+  \algrestore{myalg2}
+\Function{HdrMertens}{$pics$}
+  \State $nPics\gets$ number of photos in $pics$
+  \State $sPics\gets pics$ where the value of pixels are scaled from int 0-255 to float number 0-1
+  \For{$i$ in range($nPics$)}
+    \State $grayPic\gets$ convert $sPics[i]$ to gray scale 
+    \State $C\gets$ abs(\Call{LapacianFilter}{$grayPic$})
+    \State $S\gets$ standard\_deviation(values of pixels in three channels of $sPics[i]$)
+    \State $E\gets$ \Call{GaussCurve}{$sPics[i].pixel.intensity-0.5$, $\sigma=0.2$}
+    \State $W\gets \mbox{pow}(C, wC) *\mbox{pow}(S, wS) *\mbox{pow}(E, wE)$
+  \EndFor
+  \State $W\gets W/$sum\{$W$\}
+  \State $pyrPics\gets$ \Call{BuildPyramid}{$sPics$}
+  \State $pyrW\gets$ \Call{BuildPyramid}{$W$}
+  \State $pyrRes\gets$ pyramid of zeros with the same shape of $pyrPics$
+  \State $picUp\gets$ new image
+  \For{$i$ in range($nPics$)}
+    \For{$j$ in range($max\_level$)}
+      \State \Call{PyramidUp}{$pyrPics[i][j+1]$, $picUp$, $pyrPics[i][j].size$}
+      \State $pyrPics[i][j]\gets pyrPics[i][j]-picUp$
+    \EndFor
+    \For{$j$ in range($max\_level+1$)}
+      \State $pyrPics[i][j]\gets pyrPics[i][j]*pyrW[i][j]$
+      \State $pyrRes[j]\gets pyrRes[j]+pyrPic[i][j]$ 
+    \EndFor
+  \EndFor
+  \For{$i$ from $max\_level$ to 0}
+    \State \Call{PyramidUp}{$pyrRes[i+1]$, $picUp$, $pyrPics[i][j].size$}
+    \State $pyrRes[i]\gets pyrRes[i]+picUp$
+  \EndFor
+  \State \Return $pyrRes[0]$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+

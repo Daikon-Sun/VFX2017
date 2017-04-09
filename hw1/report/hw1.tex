@@ -16,8 +16,8 @@
 \definecolor{mauve}{rgb}{0.58,0,0.82}
 
 \lstset{frame=tb,
-	rulecolor=\color{codebg},
-	backgroundcolor=\color{codebg},
+  rulecolor=\color{codebg},
+  backgroundcolor=\color{codebg},
   language=C++,
   aboveskip=3mm,
   belowskip=-0.5mm,
@@ -26,7 +26,7 @@
   basicstyle={\small\ttfamily},
   numbers=none,
   numberstyle=\tiny\color{gray},
-	morekeywords={vector},
+  morekeywords={vector},
   keywordstyle=\color{blue},
   commentstyle=\color{dkgreen},
   stringstyle=\color{mauve},
@@ -35,11 +35,14 @@
   tabsize=3
 }
 
+
 \setlength\parskip{6pt}
 \setlength\parindent{0pt}
 \setlength\intextsep{9pt}
+
 \linespread{1}
 \renewcommand{\refname}{\vspace{-30pt}}
+\renewcommand\floatpagefraction{0.85}
 
 \title{\bf{VFX Project 1\\\large{High Dynamic Range Imaging}}\vspace{-10pt}}
 \author{Daikon Sun, Shang-Wei Chen}
@@ -52,120 +55,28 @@ In this project, we assemble high dynamic range (HDR) images from a series of ph
 \section{Implementation}
 \subsection{Environment}
 \begin{itemize}
-	\itemsep=-2pt
-	\item Camera: Sony A6000 (lens: Sony SELP1650)
-	\item OS: Linux (Arch, Ubuntu 16.04)
-	\item Tools/Libraries: gcc/g++ 6.3.1, OpenCV 3.2 (C++), Boost $>$ 1.5, Cmake $>$ 3.0
+  \itemsep=-2pt
+  \item Camera: Sony A6000 (lens: Sony SELP1650)
+  \item OS: Linux (Arch, Ubuntu 16.04)
+  \item Tools/Libraries: gcc/g++ 6.3.1, OpenCV 3.2 (C++), Boost $>$ 1.5, Cmake $>$ 3.0
 \end{itemize}
 
 \subsection{Image alignment}
 \input{image-alignment}
 
 \subsection{HDR Imaging}
-In our project, we have implemented two methods for HDR imaging: \textbf{Paul Debevec's method} \cite{ref:debevec} and \textbf{Tom Mertens' method} \cite{ref:mertens} (referred to \textbf{Algorithm 2} and \textbf{Algorithm 3}, respectively).
-
-\begin{algorithm}
-\caption{HDR algorithm using Paul Debevec's method \cite{ref:debevec}}
-\begin{algorithmic}[1]
-\State $etimes\gets$ exposure time of each photos
-\State $lambda\gets$ user parameter for smoothness
-\State $nSample\gets$ user parameter for amount of sampling points
-\State $nPics\gets$ number of photos in $pics$
-\State $points\gets nSample$ points randomly from $pics[0]$
-\Function{HdrDebevec}{$pics, etimes$}
-	\State $w\gets$ hat weighting function with min $=1$ and max $=128$
-	\For{$ch$ in range(3)}
-		\State $X[ch]\gets$ new array of size 256
-		\State $A\gets$ new array of zeros with size $(nSample*nPics+257)\times(nSample+256)$
-		\State $B\gets$new array of zeros with size $(nSample*nPics+257)\times 1$
-		\State $k\gets 0$
-		\For{$i$ in range($nSample$)}
-			\For{$j$ in range($nPics$)}
-				\State $val\gets pics[point[i]]$
-				\State $A[k][val]\gets w[val]$
-				\State $A[k][256+i]\gets-w[val]$
-				\State $B[k][0]\gets w[val]*\log(etimes[j])$
-				\State $k\gets k+1$
-			\EndFor
-		\EndFor
-		\State $A[k][128]\gets 1$
-		\For{$i$ in range(254)}
-			\State $k\gets k+1$
-			\State $A[k][i]\gets lambda*w[i]$
-			\State $A[k][i+1]\gets -2*lambda*w[i]$
-			\State $A[k][i+2]\gets lambda*w[i]$
-		\EndFor
-		\State $X[ch]\gets (A/B)$[0 to 255]
-	\EndFor	
-	\For{$ch$ in range(3)}
-		\For{pixel $i$ in a photo of channel $ch$)}
-			\State $nom\gets$ sum\{$w[i.value]*(pics[p][i.value]-\log(etimes[j]))$ for each photo $pics[p]$\}
-			\State $denom\gets$ sum\{$w[i.value]$ for each photo $pics[p]$\}
-			\State $res[ch][i]\gets\exp(nom/denom)$
-		\EndFor
-	\EndFor
-	\State\Return $res$
-\EndFunction
-\end{algorithmic}
-\end{algorithm}
-
-As mentioned in the class, we construct matrix $A$ and vector $\textbf{b}$, and then compute the solution of $\textbf{x}$ to $A\textbf{x}=\textbf{b}$, where the indice of $A$ and $\textbf{b}$ are calculated from the aligned photos combined with a hat weighting function. Once the response curve recovery is done, we can construct the high dynamic range radiance map according to \cite{ref:debevec}
-$$\ln E_i=g(Z_{ij})-\ln\Delta t_j$$
-For robustness, we choose to reduce noise in the result using the following function rather than the above one
-$$\ln E_i=\frac{\sum_{j=1}^P w(Z_{ij})(g(Z_{ij}-\ln\Delta t_j))}{\sum_{j=1}^Pw(Z_{ij})}$$
-Debevec's method is realized in 
-\begin{lstlisting}
-  void DEBEVEC::process(
-    const vector<Mat>& pics, 
-    const vector<double>& etimes, 
-    const vector<Mat>& gW, 
-    Mat& result
-  )
-\end{lstlisting}
-in which \texttt{gW} is involved for \textbf{ghost removal} feature. We will discuss it in the following sections.
-
-For Mertens' method, 
-One may refer to \texttt{src/hdr.hpp} and \texttt{src/hdr.cpp} for more details.
+\input{hdr-imaging}
 
 \subsection{Tone Mapping}
-The algorithm we used is an inspiration from photoreceptor physiology \cite{ref:tone-map}, which can be separated into two concepts: global and local reproduction. The part of global operators considers overall characteristics, such as contrast, brightness, color saturation, and etc., for visual perceptions. On the other hand, the part of local operators focuses on local modifications, such as haloing and ringing.
-
-\begin{algorithm}
-\caption{Tone mapping algorithm \cite{ref:tone-map}}\label{euclid}
-\begin{algorithmic}[1]
-\State $f\gets$ user parameter for intensity
-\State $m\gets$ user parameter for contrast
-\State $a\gets$ user parameter for light adaption 
-\State $c\gets$ user parameter for chromatic adaption
-\Function{Tonemap}{$image\_in$, $image\_out$}
-\State $L\_map\gets$ luminance of each pixel in $image\_in$
-\State $Cav[3]\gets$ mean value of each channels of $image\_in$
-\State $Lav\gets$ mean value of $L\_map$
-\State $L\_min\gets$ minimal value in $L\_map$
-\State $L\_max\gets$ maximal value in $L\_map$
-\ForAll{channel $n$ of $image\_in$}
-\ForAll{pixel $i$ in $image\_in[n]$}
-\State $L\gets$ value of the same position in $L\_map$
-\State $I\_local\gets c* image\_in[n][i]+ (1-c)*L$
-\State $I\_global\gets c*Cav[n]+ (1-c)* Lav$
-\State $I\_adaption\gets a*I\_local+(1-a)*I\_global$
-\State $image\_out[n][i]\gets image\_in[n][i]/(image\_in[n][i]+\mbox{pow}(f*I\_adaption, m))$
-\EndFor
-\EndFor
-\State Normalize the value of pixels in $image\_out$ to an integer in the range from 0 to 255
-\EndFunction
-\end{algorithmic}
-\end{algorithm}
-
-One may refer to \texttt{src/tonemap.hpp} and \texttt{src/tonemap.cpp} for more details.
+\input{tone-mapping}
 
 \section{Results}
 
 \begin{figure}[!ht]
-	\centering
-	%\subcaptionbox{Ponzo illusion\vspace{5pt}}{\includegraphics[width=.3\linewidth]{Ponzo}}
-	%\caption{782\cite{ref:optical-illusion}}
-	\label{distort}
+  \centering
+  %\subcaptionbox{Ponzo illusion\vspace{5pt}}{\includegraphics[width=.3\linewidth]{Ponzo}}
+  %\caption{782\cite{ref:optical-illusion}}
+  \label{distort}
 \end{figure}
 
 \section{Reference}

@@ -64,7 +64,14 @@ int main (int argc, char** argv) {
   
   if(blob) {
     cerr << "start blob-removal...";
-    for(int i = 0; i<pic_num; ++i) blob_removal(pics[i], pics[i]);
+    for(int i = 0; i<pic_num; ++i) {
+      blob_removal(pics[i], pics[i]);
+    }
+    for(int i = 0; i<pic_num; ++i) {
+      namedWindow("show", WINDOW_NORMAL);
+      imshow("show", pics[i]);
+      waitKey(0);
+    }
     cerr << "done" << endl;
   } else {
     cerr << "skip blob-removal" << endl;
@@ -87,11 +94,11 @@ int main (int argc, char** argv) {
   }
    
   if(!spotlight.empty()) {
-    cerr << "start spotlight-ing..." << endl;
+    cerr << "start spotlight-ing...";
     add_spotlight(pics, spotlight);
     cerr << "done" << endl;
   } else {
-    cerr << "skip spotlight-ing..." << endl;
+    cerr << "skip spotlight-ing" << endl;
   }
 
   Mat ldr, hdr;

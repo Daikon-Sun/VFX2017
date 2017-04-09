@@ -46,9 +46,6 @@ void DEBEVEC::process(const vector<Mat>& pics, const vector<double>& etimes,
     }
     solve(A, B, X[c], DECOMP_SVD);
     X[c] = X[c].rowRange(0, 256);
-    for(int i = 0; i<256; ++i)
-      cout << i << " " << X[c].at<double>(i) << endl;
-    cout << "---------------------------------------" << endl;
   }
   Size sz = pics[0].size();
   vector<Mat> res(3);

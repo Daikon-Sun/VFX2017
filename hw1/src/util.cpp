@@ -196,7 +196,7 @@ void blob_removal(const Mat& pic, Mat& result) {
   Mat res;
   pic.copyTo(res);
   int lowL = 0, lowA = 0, lowB = 0, highL = 40, highA = 255, highB = 255;
-  for(; highL <= 72; highL+=4) {
+  for(; highL <= 140; highL+=5) {
     Mat m;
     cvtColor(res, m, CV_BGR2Lab);
     SimpleBlobDetector::Params params;
@@ -222,7 +222,7 @@ void blob_removal(const Mat& pic, Mat& result) {
     Ptr<SimpleBlobDetector> detector = SimpleBlobDetector::create(params);
     vector<KeyPoint> keypoints;
     detector->detect(m, keypoints);
-    const double f = 0.9;
+    const double f = 2;
     for(auto& k:keypoints) {
       if(k.pt.x<f*1.5*k.size || k.pt.y<f*1.5*k.size ||
          k.pt.x+f*1.5*k.size>=cols || k.pt.y+f*1.5*k.size>=rows) continue;
@@ -320,7 +320,6 @@ void add_spotlight(vector<Mat>& pics, const vector<double>& para) {
     for(int j = 0; j<(int)para.size(); j+=4) {
       Mat res;
       Rect roi(para[j], para[j+1], para[j+2], para[j+3]);
-      cerr << roi << endl;
       Mat msk(pics[0].size(), CV_8UC1, Scalar::all(0));
       msk(roi) = 255;
       seamlessClone(pics[0], pics[i], msk,

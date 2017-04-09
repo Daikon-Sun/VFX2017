@@ -14,7 +14,7 @@ string in_dir = "input_image";
 string out_hdr = "result/out.hdr";
 string out_jpg = "result/out.jpg";
 int method = 1, hdr_type = 0, tonemap_type = 0, fusion_type = 0;
-bool ghost = false, verbose = false, blob = false;
+bool ghost = false, verbose = false, blob = false, blob_tune = false;
 vector<int> algn = {7, 4};
 vector<double> hdr_para = {5, 60}, tonemap_para = {0, 0, 1, 0};
 vector<double> fusion_para = {1, 1, 1};
@@ -29,7 +29,6 @@ int main (int argc, char** argv) {
   if(!state) return 0;
   else if(state < 0) return 1;
   srand(time(NULL));
-  namedWindow("show", WINDOW_NORMAL);
 
   in_dir += "/";
   ifstream ifs(in_dir+"input.txt", ifstream::in);
@@ -43,6 +42,14 @@ int main (int argc, char** argv) {
     CV_Assert(!pics[i].empty());
   }
   ifs.close();
+  
+  if(blob_tune) {
+    cerr << "start tuing blob-removal parameters..." << endl;
+    cerr << "press esc to continue" << endl;
+    for(int i = 0; i<pic_num; ++i) tune_blob(pics[i]);
+    cerr << "done" << endl;
+    exit(0);
+  }
 
   if(blob) {
     cerr << "start blob-removal...";
@@ -92,5 +99,10 @@ int main (int argc, char** argv) {
     imwrite(out_jpg, ldr*255);
     cerr << "done" << endl;
   }
-  if(verbose) show(ldr);
+  if(verbose) {
+    namedWindow("show", WINDOW_NORMAL);
+    imshow("show", ldr);
+    waitKey(0);
+    destroyWindow("show");
+  }
 }

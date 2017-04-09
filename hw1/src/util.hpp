@@ -8,5 +8,6 @@ void show(const Mat&);
 void mycvtColor(const Mat&, Mat&);
 void ghost_removal(const vector<Mat>&, vector<Mat>&);
 void blob_removal(const Mat&, Mat&);
+void tune_blob(const Mat&);
 
 #endif

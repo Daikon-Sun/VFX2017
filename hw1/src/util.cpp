@@ -19,7 +19,7 @@ extern string all_fusion_type[];
 extern int valid_fusion_cnt[];
 extern string in_dir, out_hdr, out_jpg;
 extern int method, hdr_type, tonemap_type, fusion_type;
-extern bool ghost, verbose, blob;
+extern bool ghost, verbose, blob, blob_tune;
 extern vector<int> algn;
 extern vector<double> hdr_para, tonemap_para, fusion_para;
 
@@ -50,6 +50,9 @@ int parse(int ac, char** av) {
       ("blob,b", value<bool>()
        ->implicit_value(blob, blob?"True":"False")->composing(),
        "Add blob-removal.")
+      ("blob_tune", value<bool>()
+       ->implicit_value(blob_tune, blob_tune?"True":"False")->composing(),
+       "Tune blob-removal parameters.")
       ("verbose,v", value<bool>()
        ->implicit_value(verbose, verbose?"True":"False")->composing(),
        "Show the final result.")
@@ -103,11 +106,8 @@ int parse(int ac, char** av) {
   verbose = vm.count("verbose");
   ghost = vm.count("ghost");
   blob = vm.count("blob");
+  blob_tune = vm.count("blob_tune");
   return 1;
-}
-void show(const Mat& m) {
-  imshow("show", m);
-  waitKey(0);
 }
 void generate_points(const Mat& m, int sam_num, vector<Point>& _points) {
   const int rng = 3;
@@ -251,3 +251,73 @@ void blob_removal(const Mat& pic, Mat& result) {
   }
   res.copyTo(result);
 }
+void tune_blob(const Mat& img1) {
+  
+  Mat img2, img3, display;
+  cvtColor(img1, img2, CV_BGR2Lab);
+
+  namedWindow("thresh", WINDOW_NORMAL);
+  namedWindow("blob", WINDOW_NORMAL);
+
+  int lowL = 150, lowA = 0, lowB = 155, highL = 255, highA = 255, highB = 255;
+  int min_dis = 100;
+  createTrackbar("lowL", "thresh", &lowL, 255);
+  createTrackbar("lowA", "thresh", &lowA, 255);
+  createTrackbar("lowB", "thresh", &lowB, 255);
+  createTrackbar("highL", "thresh", &highL, 255);
+  createTrackbar("highA", "thresh", &highA, 255);
+  createTrackbar("highB", "thresh", &highB, 255);
+
+  int minArea = 35, maxArea = 172, minCircularity = 58;
+	int minConvexity = 87, minInertiaRatio = 21;
+
+  createTrackbar("minArea", "blob", &minArea, 1000);
+  createTrackbar("maxArea", "blob", &maxArea, 4000);
+  createTrackbar("minCircular", "blob", &minCircularity, 99);
+  createTrackbar("minConvex", "blob", &minConvexity, 99);
+  createTrackbar("minInertia", "blob", &minInertiaRatio, 99);
+  createTrackbar("min_dis", "blob", &min_dis, 1000);
+
+  SimpleBlobDetector::Params params;
+  vector<KeyPoint> keypoints;
+
+  while (waitKey(1) != 27) //press 'esc' to quit
+  {
+      inRange(img2, Scalar(lowL, lowA, lowB),
+              Scalar(highL, highA, highB), img2);
+
+      Mat se = getStructuringElement(CV_SHAPE_ELLIPSE, Size(7, 7), Point(3, 3));
+      morphologyEx(img2, img2, MORPH_CLOSE, se);
+      imshow("thresh", img2);
+
+      bitwise_not(img2, img3);
+
+      params.filterByArea = true;
+      params.minArea = minArea + 1;
+      params.maxArea = maxArea + 1;
+
+      params.filterByCircularity = true;
+      params.minCircularity = (minCircularity + 1) / 100.0;
+
+      params.filterByConvexity = true;
+      params.minConvexity = (minConvexity + 1) / 100.0;
+
+      params.filterByInertia = true;
+      params.minInertiaRatio = (minInertiaRatio + 1) / 100.0;
+
+      params.minDistBetweenBlobs = min_dis;
+
+			Ptr<SimpleBlobDetector> detector = SimpleBlobDetector::create(params);
+      detector->detect(img3, keypoints);
+      drawKeypoints(img1, keypoints, display,
+                    Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+
+      stringstream displayText;
+      displayText = stringstream();
+      displayText << "Blob_count: " << keypoints.size();
+      putText(display, displayText.str(), Point(0, 50),
+              CV_FONT_HERSHEY_PLAIN, 2, Scalar(0, 0, 255), 2);
+      imshow("blob", display);
+  }
+}
+

@@ -45,6 +45,7 @@
 \linespread{1}
 \renewcommand{\refname}{\vspace{-30pt}}
 \renewcommand\floatpagefraction{0.85}
+\newcommand*{\equal}{=}
 
 \title{\bf{VFX Project 1\\\large{High Dynamic Range Imaging}}\vspace{-10pt}}
 \author{B03901056 Fan-Keng Sun, B03901119 Shang-Wei Chen}
@@ -91,62 +92,64 @@ In this project, we assemble high dynamic range (HDR) images from a series of ph
 
 \section{Results}
 \subsection{Response Curve}
+The recovered response curves are shown in Fig. \ref{fig:response-curve}, where the smoothness parameter $\lambda$ is varied.
 \begin{figure}[!ht]
 \center
 \hspace{-45pt}
-\subcaptionbox{$\lambda=0.5$}{
-  \begin{tikzpicture}
-    \begin{axis}[
-      domain=0:255,
-      xticklabel style={font=\scriptsize},
-      yticklabel style={font=\scriptsize},
-      xmin=0, xmax=255,
-      ymin=-4.5, ymax=3,
-      samples=100,
-      width=6.5cm, height=5cm
-    ]
-    \addplot [color=blue, thick] table [x=x, y=y] {data/curveB_5.txt};
-    \addplot [color=red, thick] table [x=x, y=y] {data/curveR_5.txt};
-    \addplot [color=green, thick] table [x=x, y=y] {data/curveG_5.txt};
-    \end{axis}
-  \end{tikzpicture}
-}
-\hspace{-10pt}
-\subcaptionbox{$\lambda=5$}{
-  \begin{tikzpicture}
-    \begin{axis}[
-      domain=0:255,
-      xticklabel style={font=\scriptsize},
-      yticklabel style={font=\scriptsize},
-      xmin=0, xmax=255,
-      ymin=-4.5, ymax=3,
-      samples=100,
-      width=6.5cm, height=5cm
-    ]
-    \addplot [color=blue, thick] table [x=x, y=y] {data/curveB_5.txt};
-    \addplot [color=red, thick] table [x=x, y=y] {data/curveR_5.txt};
-    \addplot [color=green, thick] table [x=x, y=y] {data/curveG_5.txt};
-    \end{axis}
-  \end{tikzpicture}
-}
-\hspace{-10pt}
-\subcaptionbox{$\lambda=50$}{
-  \begin{tikzpicture}
-    \begin{axis}[
-      domain=0:255,
-      xticklabel style={font=\scriptsize},
-      yticklabel style={font=\scriptsize},
-      xmin=0, xmax=255,
-      ymin=-4.5, ymax=3,
-      samples=100,
-      width=6.5cm, height=5cm
-    ]
-    \addplot [color=blue, thick] table [x=x, y=y] {data/curveB_5.txt};
-    \addplot [color=red, thick] table [x=x, y=y] {data/curveR_5.txt};
-    \addplot [color=green, thick] table [x=x, y=y] {data/curveG_5.txt};
-    \end{axis}
-  \end{tikzpicture}
-}
+\begin{tikzpicture}
+  \begin{axis}[
+    domain=0:255,
+    xlabel=pixel value ($\lambda\equal 0.5$),
+    xlabel style={font=\scriptsize},
+    ylabel=log exposure,
+    ylabel near ticks,
+    ylabel style={font=\scriptsize},
+    xticklabel style={font=\scriptsize},
+    yticklabel style={font=\scriptsize},
+    xmin=0, xmax=255,
+    ymin=-4.5, ymax=3,
+    samples=100,
+    width=6cm, height=5cm
+  ]
+  \addplot [color=blue, thick] table [x=x, y=y] {data/curveB_0.5.txt};
+  \addplot [color=red, thick] table [x=x, y=y] {data/curveR_0.5.txt};
+  \addplot [color=green, thick] table [x=x, y=y] {data/curveG_0.5.txt};
+  \end{axis}
+\end{tikzpicture}
+\begin{tikzpicture}
+  \begin{axis}[
+    domain=0:255,
+    xlabel=pixel value ($\lambda\equal 5$),
+    xlabel style={font=\scriptsize},
+    xticklabel style={font=\scriptsize},
+    yticklabel style={font=\scriptsize},
+    xmin=0, xmax=255,
+    ymin=-4.5, ymax=3,
+    samples=100,
+    width=6cm, height=5cm
+  ]
+  \addplot [color=blue, thick] table [x=x, y=y] {data/curveB_5.txt};
+  \addplot [color=red, thick] table [x=x, y=y] {data/curveR_5.txt};
+  \addplot [color=green, thick] table [x=x, y=y] {data/curveG_5.txt};
+  \end{axis}
+\end{tikzpicture}
+\begin{tikzpicture}
+  \begin{axis}[
+    domain=0:255,
+    xlabel=pixel value ($\lambda\equal 50$),
+    xlabel style={font=\scriptsize},
+    xticklabel style={font=\scriptsize},
+    yticklabel style={font=\scriptsize},
+    xmin=0, xmax=255,
+    ymin=-4.5, ymax=3,
+    samples=100,
+    width=6cm, height=5cm
+  ]
+  \addplot [color=blue, thick] table [x=x, y=y] {data/curveB_50.txt};
+  \addplot [color=red, thick] table [x=x, y=y] {data/curveR_50.txt};
+  \addplot [color=green, thick] table [x=x, y=y] {data/curveG_50.txt};
+  \end{axis}
+\end{tikzpicture}
 \hspace{-45pt}
 \caption{Response curve for Sony A6000}
 \label{fig:response-curve}

@@ -35,11 +35,10 @@
   tabsize=3
 }
 
-
+\graphicspath{{pic/}}
 \setlength\parskip{6pt}
 \setlength\parindent{0pt}
 \setlength\intextsep{9pt}
-
 \linespread{1}
 \renewcommand{\refname}{\vspace{-30pt}}
 \renewcommand\floatpagefraction{0.85}
@@ -47,10 +46,24 @@
 \title{\bf{VFX Project 1\\\large{High Dynamic Range Imaging}}\vspace{-10pt}}
 \author{Daikon Sun, Shang-Wei Chen}
 \date{}
+
 \begin{document}
 \maketitle
 \section{Description}
 In this project, we assemble high dynamic range (HDR) images from a series of photographs under various exposures, using a popular vision library, OpenCV, for image processing and I/O. The photographs are preprocessed using median threshold bitmap (MTB) algorithm for image alignment. With the aid of tone mapping algorithm, HDR images are reproduced to LDR images in a better human perceptual sense. We learned basic photographing theories and image processing skills from the project. 
+
+The features we have implemented are:
+\vspace{-8pt}
+\begin{itemize}
+  \itemsep=-2pt
+  \item Image alignment: MTB algorithm.
+  \item HDR imaging: Paul Debevec's method, Tom Mertens' method.
+  \item Tone mapping: Erik Reinhard's method.
+  \item Blob removal
+  \item Ghost removal: Erum Arif Khan's method.
+  \item Spotlighting
+\end{itemize}
+\vspace{-8pt}
 
 \section{Implementation}
 \subsection{Environment}
@@ -63,18 +76,40 @@ In this project, we assemble high dynamic range (HDR) images from a series of ph
 
 \subsection{Image alignment}
 \input{image-alignment}
-
 \subsection{HDR Imaging}
 \input{hdr-imaging}
-
 \subsection{Tone Mapping}
 \input{tone-mapping}
+\subsection{Blob Removal}
+Owing to imperfection of original photos or some irregular situations that the above algorithms do not handle, there might be blobs on the photos. We implement blob removal based on a feature in OpenCV libraries, \texttt{cv::SimpleBlobDetector}. Using the following function (need to include \texttt{features2d.hpp})
+\begin{lstlisting}
+  static Ptr<SimpleBlobDetector> cv::create(
+    const SimpleBlobDetector::Params &parameters=SimpleBlobDetector::Params()
+  )
+\end{lstlisting}
+simply convert RGB color to gray scale only, which may not detect the blobs completely; what's more, splitting RGB color into three channels and thresholding by each channel are not effective enough. Hence, we transform RGB color to \textbf{Lab color space} and threshold the image by \textbf{L} (lightness), \textbf{a} (green-red color component), and \textbf{b} (blue-yellow color component) channels separately, which may have better performance for blob detection, and then use the original \texttt{cv::SimpleBlobDetector} functions to detect the blobs.
+
+This feature is realized by the following function in \texttt{src/util.cpp}
+\begin{lstlisting}
+  void blob_removal(const Mat& pic, Mat& result)
+\end{lstlisting}
+Since \texttt{cv::SimpleBlobDetector} provides many parameters for blob detection, such as blob size, circularity, inertia ratio, convexity, and for convenience, we create a panel for tuning these parameters (Fig. \ref{fig:blob-panel}). One of the advantages is that we can manually figure out the correctness of blob detection, and thus prevent the detection from some unwanted results if performing automatically. However, iterations is required for completeness since different blobs may have their own threshold values.
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[height=16cm]{blob-panel1}
+  \includegraphics[height=16cm]{blob-panel2}
+  \caption{Panel for blob removal}
+  \label{fig:blob-panel}
+\end{figure}
+
+Once the blobs are detected, we approximately fill out these areas with the average colors nearby. For more details, one can refer to \texttt{src/util.hpp} and \texttt{src/util.cpp}. 
 
 \section{Results}
 
 \begin{figure}[!ht]
   \centering
-  %\subcaptionbox{Ponzo illusion\vspace{5pt}}{\includegraphics[width=.3\linewidth]{Ponzo}}
+  %\subcaptionbox{Ponzo illusion\vspace{5pt}}{\includegraphics[width=.3\linewidth]{blob-panel}}
   %\caption{782\cite{ref:optical-illusion}}
   \label{distort}
 \end{figure}

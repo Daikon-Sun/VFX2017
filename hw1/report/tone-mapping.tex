@@ -11,13 +11,6 @@ One may refer to \texttt{src/tonemap.hpp} and \texttt{src/tonemap.cpp} for more 
 \State $m\gets$ user parameter for contrast
 \State $a\gets$ user parameter for light adaption 
 \State $c\gets$ user parameter for chromatic adaption
-\algstore{myalg3}
-\end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}
-\begin{algorithmic}[1]
-\algrestore{myalg3}
 \Function{Tonemap}{$image\_in$, $image\_out$}
 \State $L\_map\gets$ luminance of each pixel in $image\_in$
 \State $Cav[3]\gets$ mean value of each channels of $image\_in$

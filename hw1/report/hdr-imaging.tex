@@ -23,8 +23,16 @@ in which the parameter \texttt{gW} is involved for \textbf{ghost removal} featur
 \State $nSample\gets$ user parameter for amount of sampling points
 \State $nPics\gets$ number of photos in $pics$
 \State $points\gets nSample$ points randomly from $pics[0]$
+
 \Function{HdrDebevec}{$pics, etimes$}
   \State $w\gets$ hat weighting function with min $=1$ and max $=128$
+\algstore{deb}
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\begin{algorithmic}[1]
+\algrestore{deb}
   \For{$ch$ in range(3)}
     \State $X[ch]\gets$ new array of size 256
     \State $A\gets$ new array of zeros with size $(nSample*nPics+257)\times(nSample+256)$
@@ -40,13 +48,6 @@ in which the parameter \texttt{gW} is involved for \textbf{ghost removal} featur
       \EndFor
     \EndFor
     \State $A[k][128]\gets 1$
-    \algstore{myalg}
-  \end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}
-\begin{algorithmic}[1]
-    \algrestore{myalg}
     \For{$i$ in range(254)}
       \State $k\gets k+1$
       \State $A[k][i]\gets lambda*w[i]$
@@ -90,13 +91,6 @@ One may refer to \texttt{src/hdr.hpp} and \texttt{src/hdr.cpp} for more details.
 \begin{algorithmic}[1]
 \State $wC, wS, wE\gets$ user parameters for weighting functions
 \State $max\_level\gets$ user parameter for building pyramids
-\algstore{myalg2}
-\end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}
-\begin{algorithmic}[1]
-  \algrestore{myalg2}
 \Function{HdrMertens}{$pics$}
   \State $nPics\gets$ number of photos in $pics$
   \State $sPics\gets pics$ where the value of pixels are scaled from int 0-255 to float number 0-1

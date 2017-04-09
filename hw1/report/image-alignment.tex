@@ -16,6 +16,9 @@ One may refer to \texttt{src/mtb.hpp} and \texttt{src/mtb.cpp} for more details.
 \begin{algorithm}
 \caption{MTB algorithm \cite{ref:Ward}}
 \begin{algorithmic}[1]
+\State $pics\gets$ images read via OpenCV
+\State $max\_level\gets$ user parameter for aligning iterations
+\State $max\_denoise\gets$ user parameter for setting noise area
 \Function{MtbProcess}{$pics, max\_level, max\_denoise$}
 	\State $N\gets$ number of $pics$
 	\State $bi\_pics, masks\gets$ new image array with dimension $N$ and $max\_level$
@@ -52,7 +55,13 @@ One may refer to \texttt{src/mtb.hpp} and \texttt{src/mtb.cpp} for more details.
 		\EndIf
 	\EndFor
 \EndFunction
-\Statex
+\algstore{algmtb}
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\begin{algorithmic}[1]
+\algrestore{algmtb}
 \Function{MtbAlign}{$i, level, max\_level$}
 	\If{$level$ equals $max\_level$}
 		\State \Return{$(0, 0)$}

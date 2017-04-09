@@ -1,0 +1,9 @@
+Since there might be some objects moving irregularly when shooting photographs, and can barely rebuild the image by the previous ghost removal method, we use the function
+\begin{lstlisting}
+  void cv::seamlessClone(InputArray src, InputArray dst, InputArray mask, Point p, OutputArray blend, int flags)
+\end{lstlisting}
+in OpenCV libraries to recover the waving parts in the photos by simply replacing them based on one photo. The feature is realized in the following function
+\begin{lstlisting}
+  void add_spotlight(vector<Mat>& pics, const vector<double>& para)
+\end{lstlisting}
+One may refer to \texttt{src/util.cpp} for more detail.

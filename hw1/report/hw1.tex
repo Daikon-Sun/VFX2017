@@ -93,19 +93,61 @@ In this project, we assemble high dynamic range (HDR) images from a series of ph
 \subsection{Response Curve}
 \begin{figure}[!ht]
 \center
-\begin{tikzpicture}
-  \begin{axis}[
-    domain=0:255,
-    xmin=0, xmax=255,
-    ymin=-4, ymax=5,
-    samples=100,
-    width=12cm, height=9cm
-  ]
-  \addplot [color=blue] table [x=x, y=y] {data/curveB.txt};
-  \addplot [color=red] table [x=x, y=y] {data/curveR.txt};
-  \addplot [color=green] table [x=x, y=y] {data/curveG.txt};
-  \end{axis}
-\end{tikzpicture}
+\hspace{-45pt}
+\subcaptionbox{$\lambda=0.5$}{
+  \begin{tikzpicture}
+    \begin{axis}[
+      domain=0:255,
+      xticklabel style={font=\scriptsize},
+      yticklabel style={font=\scriptsize},
+      xmin=0, xmax=255,
+      ymin=-4.5, ymax=3,
+      samples=100,
+      width=6.5cm, height=5cm
+    ]
+    \addplot [color=blue, thick] table [x=x, y=y] {data/curveB_5.txt};
+    \addplot [color=red, thick] table [x=x, y=y] {data/curveR_5.txt};
+    \addplot [color=green, thick] table [x=x, y=y] {data/curveG_5.txt};
+    \end{axis}
+  \end{tikzpicture}
+}
+\hspace{-10pt}
+\subcaptionbox{$\lambda=5$}{
+  \begin{tikzpicture}
+    \begin{axis}[
+      domain=0:255,
+      xticklabel style={font=\scriptsize},
+      yticklabel style={font=\scriptsize},
+      xmin=0, xmax=255,
+      ymin=-4.5, ymax=3,
+      samples=100,
+      width=6.5cm, height=5cm
+    ]
+    \addplot [color=blue, thick] table [x=x, y=y] {data/curveB_5.txt};
+    \addplot [color=red, thick] table [x=x, y=y] {data/curveR_5.txt};
+    \addplot [color=green, thick] table [x=x, y=y] {data/curveG_5.txt};
+    \end{axis}
+  \end{tikzpicture}
+}
+\hspace{-10pt}
+\subcaptionbox{$\lambda=50$}{
+  \begin{tikzpicture}
+    \begin{axis}[
+      domain=0:255,
+      xticklabel style={font=\scriptsize},
+      yticklabel style={font=\scriptsize},
+      xmin=0, xmax=255,
+      ymin=-4.5, ymax=3,
+      samples=100,
+      width=6.5cm, height=5cm
+    ]
+    \addplot [color=blue, thick] table [x=x, y=y] {data/curveB_5.txt};
+    \addplot [color=red, thick] table [x=x, y=y] {data/curveR_5.txt};
+    \addplot [color=green, thick] table [x=x, y=y] {data/curveG_5.txt};
+    \end{axis}
+  \end{tikzpicture}
+}
+\hspace{-45pt}
 \caption{Response curve for Sony A6000}
 \label{fig:response-curve}
 \end{figure}

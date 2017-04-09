@@ -136,7 +136,6 @@ double kernel(const Vec5d& v1, const Vec5d& v2) {
 void ghost_removal(const vector<Mat>& pics, vector<Mat>& result) {
   const int neigh = 1, iter = 15, pic_num = (int)pics.size();
   const int cols = pics[0].cols, rows = pics[0].rows;
-  const int CV_64FC5 = CV_MAKETYPE(CV_64F, 5);
   const Size sz = pics[0].size();
   Mat w(Size(256, 1), CV_64FC1, Scalar::all(0));
   for(int i = 0; i<256; ++i) w.at<double>(i) = (1 - pow(2.0*i/255-1, 12));
@@ -146,14 +145,14 @@ void ghost_removal(const vector<Mat>& pics, vector<Mat>& result) {
   Mat x(sz, CV_64FC1, Scalar::all(0));
   Mat y(sz, CV_64FC1, Scalar::all(0));
   for(int i = 0; i<rows; ++i) for(int j = 0; j<cols; ++j) {
-    x.at<double>(i, j) = double(j)/(cols-1);
-    y.at<double>(i, j) = double(i)/(rows-1);
+    x.at<double>(i, j) = double(j);//(cols-1);
+    y.at<double>(i, j) = double(i);//(rows-1);
   }
   for(int i = 0; i<pic_num; ++i) {
     split_pics.push_back(vector<Mat>(3));
     cvtColor(pics[i], merged[i], COLOR_BGR2Lab);
     merged[i].convertTo(merged[i], CV_64FC3);
-    merged[i] /= 255.0;
+    //merged[i] /= 255.0;
     split(merged[i], split_pics[i]);
     split_pics[i].push_back(x);
     split_pics[i].push_back(y);

@@ -49,6 +49,8 @@ int main (int argc, char** argv) {
     for(int i = 0; i<pic_num; ++i) tune_blob(pics[i]);
     cerr << "done" << endl;
     exit(0);
+  } else {
+    cerr << "skip blob-removal parameters tuning" << endl;
   }
 
   if(blob) {

@@ -36,6 +36,14 @@ Here is a detailed explanation of parameters:
                                             specifically fine tuned paramters. This means unless you 
                                             have found a good set of parameters for your pictures, or else
                                             blob-removal may worsen picture quality.
+--blob_tune [=arg(=False)]                  Tune blob-removal parameters. Turning on this options will 
+                                            pop out windows with trackbars so that user can tune various
+                                            variables to see the blob-removal result almost immediately.
+                                            However, the users should rememeber the parameters by
+                                            themselves, because after tuning, the program will exit. Then,
+                                            users are required to manually change the numbers in
+                                            src/util.cpp/blob_removal. All parameters are changeable 
+                                            including the for-loop condition or even remove the for-loop.
 -v [ --verbose ] [=arg(=False)]             Show the final result. If False, image will be saved without
                                             popping out.
 -m [ --method ] arg (=1)                    Method to produce high-dynamic range image:

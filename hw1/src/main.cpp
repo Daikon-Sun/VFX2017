@@ -64,14 +64,7 @@ int main (int argc, char** argv) {
   
   if(blob) {
     cerr << "start blob-removal...";
-    for(int i = 0; i<pic_num; ++i) {
-      blob_removal(pics[i], pics[i]);
-    }
-    for(int i = 0; i<pic_num; ++i) {
-      namedWindow("show", WINDOW_NORMAL);
-      imshow("show", pics[i]);
-      waitKey(0);
-    }
+    for(int i = 0; i<pic_num; ++i) blob_removal(pics[i], pics[i]);
     cerr << "done" << endl;
   } else {
     cerr << "skip blob-removal" << endl;

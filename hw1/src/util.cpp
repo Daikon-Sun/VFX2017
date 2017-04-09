@@ -21,7 +21,7 @@ extern string in_dir, out_hdr, out_jpg;
 extern int method, hdr_type, tonemap_type, fusion_type;
 extern bool ghost, verbose, blob, blob_tune;
 extern vector<int> algn;
-extern vector<double> hdr_para, tonemap_para, fusion_para;
+extern vector<double> spotlight, hdr_para, tonemap_para, fusion_para;
 
 inline bool check(string str, size_t sz, int i) {
   if((int)sz != i) {
@@ -41,18 +41,20 @@ int parse(int ac, char** av) {
        "Output filename of hdr (including .hdr).")
       ("out_jpg_file,j", value<string>(&out_jpg)->default_value(out_jpg),
        "Output filename of jpg (including .jpg).")
-      ("align,a",
-       value< vector<int> >(&algn)->multitoken()->default_value(algn, "7 4"),
-       "Align images before processing.")
-      ("ghost,g", value<bool>()
-       ->implicit_value(ghost, ghost?"True":"False")->composing(),
-       "Add ghost-removal mask.")
-      ("blob,b", value<bool>()
-       ->implicit_value(blob, blob?"True":"False")->composing(),
-       "Add blob-removal.")
       ("blob_tune", value<bool>()
        ->implicit_value(blob_tune, blob_tune?"True":"False")->composing(),
        "Tune blob-removal parameters.")
+      ("align,a",
+       value< vector<int> >(&algn)->multitoken()->default_value(algn, "7 4"),
+       "Align images before processing.")
+      ("blob,b", value<bool>()
+       ->implicit_value(blob, blob?"True":"False")->composing(),
+       "Add blob-removal.")
+      ("ghost,g", value<bool>()
+       ->implicit_value(ghost, ghost?"True":"False")->composing(),
+       "Add ghost-removal mask.")
+      ("spotlight,s", value< vector<double> >(&spotlight)->multitoken(),
+       "The region of interest and weight of the first image to be enhanced.")
       ("verbose,v", value<bool>()
        ->implicit_value(verbose, verbose?"True":"False")->composing(),
        "Show the final result.")
@@ -86,8 +88,11 @@ int parse(int ac, char** av) {
 			cout << desc << endl;
 			return 0;
 	}
-  if(!algn.empty()) {
+  if(!algn.empty() && algn[0] >= 0) {
     if(!check("Aligment", algn.size(), 2)) return -1;
+  }
+  if(!spotlight.empty()) {
+    if(!check("Spotlight", spotlight.size()%4, 0)) return -1;
   }
   if(!method) {
     if(!check(all_hdr_type[hdr_type], hdr_para.size(), valid_hdr_cnt[hdr_type]))
@@ -320,4 +325,23 @@ void tune_blob(const Mat& img1) {
       imshow("blob", display);
   }
 }
-
+void add_spotlight(vector<Mat>& pics, const vector<double>& para) {
+  int pic_num = (int)pics.size();
+  for(int i = 1; i<pic_num; ++i) {
+    for(int j = 0; j<(int)para.size(); j+=4) {
+      Mat res;
+      Rect roi(para[j], para[j+1], para[j+2], para[j+3]);
+      Mat msk(pics[0].size(), CV_8UC1, Scalar::all(0));
+      msk(roi) = 255;
+      seamlessClone(pics[0], pics[i], msk,
+                    Point(para[j]+para[j+2]/2, para[j+1]+para[j+3]/2),
+                    pics[i], 1);
+      //Mat target;
+      //addWeighted(pics[0](roi), r, pics[i](roi), 1-r, 0, target);
+      //target.copyTo(pics[i](roi));
+      //namedWindow("tmp", WINDOW_NORMAL);
+      //imshow("tmp", res);
+      //waitKey(0);
+    }
+  }
+}

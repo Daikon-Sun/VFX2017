@@ -6,7 +6,7 @@ using namespace cv;
 #include "util.hpp"
 #include "mtb.hpp"
 
-void MTB::process(const vector<Mat>& pics, vector<Mat>& res) {
+void MTB::process(vector<Mat>& pics) {
   int max_level = _para[0], max_denoise = _para[1];
   int pics_num = (int)pics.size();
   _bi_pics.resize(pics_num);
@@ -31,13 +31,12 @@ void MTB::process(const vector<Mat>& pics, vector<Mat>& res) {
     maxc = max(maxc, p.first);
     maxr = max(maxr, p.second);
   }
-  res.resize(pics_num);
   for(int i = 0; i<pics_num; ++i) {
     int Dc, Dr; tie(Dc, Dr) = offsets[i];
     int c1 = maxc-Dc, c2 = cols+minc-Dc;
     int r1 = maxr-Dr, r2 = rows+minr-Dr;
     Rect roi(c1, r1, c2-c1, r2-r1);
-    res[i] = pics[i](roi).clone();
+    pics[i] = pics[i](roi).clone();
   }
 }
 void MTB::transform_bi(const Mat& m, Mat& bi, Mat& de, int max_denoise) {

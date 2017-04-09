@@ -5,7 +5,7 @@ class MTB {
 
 public:
   MTB(const vector<int>& para) : _para(para) {};
-  void process(const vector<Mat>&, vector<Mat>&);
+  void process(vector<Mat>&);
 private:
   void transform_bi(const Mat&, Mat&, Mat&, int);
   void shift(Mat&, Mat&, const pair<int, int>&);

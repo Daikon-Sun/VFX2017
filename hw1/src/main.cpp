@@ -13,8 +13,8 @@ int valid_fusion_cnt[] = {4};
 string in_dir = "input_image";
 string out_hdr = "result/out.hdr";
 string out_jpg = "result/out.jpg";
-int method = 1, hdr_type = 0, tonemap_type = 0, fusion_type = 0;
-bool ghost = false, verbose = false, blob = false, blob_tune = false;
+int method = 1, hdr_type = 0, tonemap_type = 0, fusion_type = 0, ghost = 0;
+bool verbose = false, blob = false, blob_tune = false;
 vector<int> algn = {7, 4};
 vector<double> hdr_para = {5, 60}, tonemap_para = {-0.5, 0, 1, 0};
 vector<double> spotlight, fusion_para = {1, 1, 1, 8};
@@ -70,10 +70,16 @@ int main (int argc, char** argv) {
     cerr << "skip blob-removal" << endl;
   }
 
+  namedWindow("show", WINDOW_NORMAL);
+  for(auto& p:pics) {
+    imshow("show", p);
+    waitKey(0);
+  }
+
   vector<Mat> W;
-  if(ghost) {
-    cerr << "start ghost-removal..." << endl;
-    ghost_removal(pics, W);
+  if(ghost >= 0) {
+    cerr << "start ghost-removal...";
+    ghost_removal(pics, ghost, W);
     cerr << "done" << endl;
   } else {
     cerr << "skip ghost-removal" << endl;

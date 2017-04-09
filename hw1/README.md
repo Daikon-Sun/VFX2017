@@ -31,7 +31,6 @@ Here is a detailed explanation of parameters:
 -a [ --align ] arg                          Align images before processing using median threshold bitmap.
                                             Default value of maximum level and denoise margin is 7 and 4. 
                                             To skip this step, set the maximum level to negative value.
--g [ --ghost ] [=arg(=False)]               Add ghost-removal mask using EA Khan's method.
 -b [ --blob ] [=arg(=False)]                Add blob-removal using OpenCV's SimpleBlobDetector with 
                                             specifically fine tuned paramters. This means unless you 
                                             have found a good set of parameters for your pictures, or else
@@ -44,6 +43,11 @@ Here is a detailed explanation of parameters:
                                             users are required to manually change the numbers in
                                             src/util.cpp/blob_removal. All parameters are changeable 
                                             including the for-loop condition or even remove the for-loop.
+-g [ --ghost ] [=arg(=False)]               Add ghost-removal mask using EA Khan's method.
+-s [ --spotlight ] arg                      The regions of interest of the first image to be enhance.
+                                            Type 4*n numbers to represent all rectangls in the format:
+                                            (x, y, w, h).
+
 -v [ --verbose ] [=arg(=False)]             Show the final result. If False, image will be saved without
                                             popping out.
 -m [ --method ] arg (=1)                    Method to produce high-dynamic range image:

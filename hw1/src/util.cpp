@@ -18,8 +18,8 @@ extern int valid_tonemap_cnt[];
 extern string all_fusion_type[];
 extern int valid_fusion_cnt[];
 extern string in_dir, out_hdr, out_jpg;
-extern int method, hdr_type, tonemap_type, fusion_type;
-extern bool ghost, verbose, blob, blob_tune;
+extern int method, hdr_type, tonemap_type, fusion_type, ghost;
+extern bool verbose, blob, blob_tune;
 extern vector<int> algn;
 extern vector<double> spotlight, hdr_para, tonemap_para, fusion_para;
 
@@ -41,20 +41,18 @@ int parse(int ac, char** av) {
        "Output filename of hdr (including .hdr).")
       ("out_jpg_file,j", value<string>(&out_jpg)->default_value(out_jpg),
        "Output filename of jpg (including .jpg).")
-      ("blob_tune", value<bool>()
-       ->implicit_value(blob_tune, blob_tune?"True":"False")->composing(),
-       "Tune blob-removal parameters.")
       ("align,a",
        value< vector<int> >(&algn)->multitoken()->default_value(algn, "7 4"),
        "Align images before processing.")
-      ("blob,b", value<bool>()
-       ->implicit_value(blob, blob?"True":"False")->composing(),
+      ("blob,b", value<bool>()->implicit_value(blob, blob?"True":"False"),
        "Add blob-removal.")
-      ("ghost,g", value<bool>()
-       ->implicit_value(ghost, ghost?"True":"False")->composing(),
-       "Add ghost-removal mask.")
+      ("blob_tune", value<bool>()
+       ->implicit_value(blob_tune, blob_tune?"True":"False")->composing(),
+       "Tune blob-removal parameters.")
+      ("ghost,g", value<int>(&ghost)->default_value(ghost), 
+       "The number of iterations for ghost-removal.")
       ("spotlight,s", value< vector<double> >(&spotlight)->multitoken(),
-       "The region of interest and weight of the first image to be enhanced.")
+       "The regions of interest of the first image to be enhanced.")
       ("verbose,v", value<bool>()
        ->implicit_value(verbose, verbose?"True":"False")->composing(),
        "Show the final result.")
@@ -109,7 +107,6 @@ int parse(int ac, char** av) {
     return -1;
   }
   verbose = vm.count("verbose");
-  ghost = vm.count("ghost");
   blob = vm.count("blob");
   blob_tune = vm.count("blob_tune");
   return 1;
@@ -142,8 +139,8 @@ inline double kernel(const Vec5d& v1, const Vec5d& v2) {
   double rtn = _2pi*exp(-0.5 * sum);
   return rtn;
 }
-void ghost_removal(const vector<Mat>& pics, vector<Mat>& result) {
-  const int neigh = 1, iter = 15, pic_num = (int)pics.size();
+void ghost_removal(const vector<Mat>& pics, int iter, vector<Mat>& result) {
+  const int neigh = 1, pic_num = (int)pics.size();
   const int cols = pics[0].cols, rows = pics[0].rows;
   const Size sz = pics[0].size();
   Mat w(Size(256, 1), CV_64FC1, Scalar::all(0));
@@ -336,12 +333,6 @@ void add_spotlight(vector<Mat>& pics, const vector<double>& para) {
       seamlessClone(pics[0], pics[i], msk,
                     Point(para[j]+para[j+2]/2, para[j+1]+para[j+3]/2),
                     pics[i], 1);
-      //Mat target;
-      //addWeighted(pics[0](roi), r, pics[i](roi), 1-r, 0, target);
-      //target.copyTo(pics[i](roi));
-      //namedWindow("tmp", WINDOW_NORMAL);
-      //imshow("tmp", res);
-      //waitKey(0);
     }
   }
 }

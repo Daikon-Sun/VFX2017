@@ -112,20 +112,10 @@ int parse(int ac, char** av) {
   return 1;
 }
 void generate_points(const Mat& m, int sam_num, vector<Point>& _points) {
-  const int rng = 0;
-  _points.reserve(sam_num);
   while(_points.size() < sam_num) {
     const int r = rand()%(m.rows-10)+5;
     const int c = rand()%(m.cols-10)+5;
-    const Vec3b& val = m.at<Vec3b>(r, c);
-    bool same = true;
-    for(int j = r-rng; j<=r+rng; ++j) for(int k = c-rng; k<=c+rng; ++k) {
-      if(m.at<Vec3b>(j, k) != val) {
-        same = false;
-        break;
-      }
-    }
-    if( same ) _points.emplace_back(c, r);
+    _points.emplace_back(c, r);
   }
 }
 void mycvtColor(const Mat& m, Mat& src) {

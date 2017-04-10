@@ -1,5 +1,5 @@
 # VFX 2017 hw1 - High Dynamic Range Imaging
-B09301056 孫凡耕, B03901119, 陳尚緯
+***B09301056 孫凡耕, B03901119, 陳尚緯***
 
 ## Followings should be installed and versions suggested:
 - gcc/g++ 6.3.1
@@ -10,6 +10,7 @@ B09301056 孫凡耕, B03901119, 陳尚緯
 ## How to make:
 Type `cmake .` under `VFX2017/hw1` directory and a `Makefile` will be created.
 Then, type `make` and finally a `main` executable will be created.
+To see our report, cd to `report` then type `make` then a `hw1.pdf` will be created.
 
 ## Usage
 To see simple help message, simply type:

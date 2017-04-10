@@ -87,11 +87,11 @@ int main (int argc, char** argv) {
   }
    
   if(!spotlight.empty()) {
-    cerr << "start spotlight-ing..." << endl;
+    cerr << "start spotlight-ing...";
     add_spotlight(pics, spotlight);
     cerr << "done" << endl;
   } else {
-    cerr << "skip spotlight-ing..." << endl;
+    cerr << "skip spotlight-ing" << endl;
   }
 
   Mat ldr, hdr;

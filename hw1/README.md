@@ -1,5 +1,5 @@
 # VFX 2017 hw1 - High Dynamic Range Imaging
-***B09301056 孫凡耕, B03901119, 陳尚緯***
+***B09301056 孫凡耕, B03901119 陳尚緯***
 
 ## Followings should be installed and versions suggested:
 - gcc/g++ 6.3.1

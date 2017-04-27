@@ -1,5 +1,5 @@
-#ifndef _SIFT_H_
-#define _SIFT_H_
+#ifndef _SIFT_HPP_
+#define _SIFT_HPP_
 
 class SIFT {
 public:

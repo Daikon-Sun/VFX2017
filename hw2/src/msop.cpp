@@ -1,11 +1,11 @@
-#include <iostream>
 #include <opencv2/opencv.hpp>
+#include <iostream>
+#include <climits>
 
 using namespace cv;
 using namespace std;
 
 #include "msop.hpp"
-#include "mytype.hpp"
 
 #define MAX_LAYER           5
 #define G_KERN              0
@@ -16,7 +16,19 @@ using namespace std;
 #define ANMS_ROBUST_RATIO   0.9
 #define KEYPOINT_NUM        500
 
-bool is_greater_r(Keypoint i, Keypoint j) { return i.comp_minR2(j); }
+struct PreKeypoint {
+  int     x;
+  int     y;
+  int     minR2;
+  float   hm;
+  PreKeypoint() {}
+  PreKeypoint(int x, int y, float h)
+    : x(x), y(y), minR2(INT_MAX), hm(h) {}
+};
+
+bool is_greater_r(PreKeypoint i, PreKeypoint j) { 
+  return (i.minR2 > j.minR2); 
+}
 
 void MSOP::process(const vector<Mat>& img_input) {
   namedWindow("process", WINDOW_NORMAL);
@@ -52,13 +64,10 @@ void MSOP::process(const vector<Mat>& img_input) {
       GaussianBlur(Hyy, Hyy, Size(G_KERN, G_KERN), SIGMA_I);
       Mat HM = (Hxx.mul(Hyy) - Hxy.mul(Hxy)) / (Hxx + Hyy);
       // compute keypoints
-      cerr << "Computing keypoints..." << endl;
-
       Mat show = img;
       cvtColor(show, show, CV_GRAY2BGR);
-
-      vector<Keypoint> kpts;
-
+      
+      vector<PreKeypoint> kpts;
       for (int x = 1, xm = pyr[i].cols-1; x < xm; ++x)
         for (int y = 1, ym = pyr[i].rows-1; y < ym; ++y) {
           float val = HM.at<float>(y,x);
@@ -73,42 +82,25 @@ void MSOP::process(const vector<Mat>& img_input) {
             val < HM.at<float>(y-1,x  ) ||
             val < HM.at<float>(y-1,x-1)
           ) continue;
-          drawMarker(
-            show, 
-            Point(x, y), 
-            Scalar(0, 0, 255), 
-            MARKER_CROSS, 20, 2
-          );
-          kpts.push_back(Keypoint(x, y, val));
+          kpts.push_back(PreKeypoint(x, y, val));
         }
-
-      cerr << "Keypoints before ANMS: " << kpts.size();
-      imshow("process", show);
-      waitKey(0);
-
+      // apply ANMS method
       for (int i = 0, n = kpts.size(); i < n; ++i)
         for (int j = i+1; j < n; ++j) {
-          kpts[i].update_minR2(kpts[j], ANMS_ROBUST_RATIO);
-          kpts[j].update_minR2(kpts[i], ANMS_ROBUST_RATIO);          
+          int newR2 = pow(kpts[i].x - kpts[j].x, 2) + pow(kpts[i].y - kpts[j].y, 2);
+          if (kpts[i].hm < ANMS_ROBUST_RATIO * kpts[j].hm) {
+            if (newR2 < kpts[i].minR2) kpts[i].minR2 = newR2; 
+          } else if (kpts[j].hm < ANMS_ROBUST_RATIO * kpts[i].hm) {
+            if (newR2 < kpts[j].minR2) kpts[j].minR2 = newR2;
+          }
         } 
-
       sort(kpts.begin(), kpts.end(), is_greater_r);
       kpts.resize(KEYPOINT_NUM);
-
-      show = img;
-      cvtColor(show, show, CV_GRAY2BGR);
       for (auto p : kpts)
-        drawMarker(
-          show, 
-          p.get_point(), 
-          Scalar(0, 0, 255), 
-          MARKER_CROSS, 20, 2
-        );
+        drawMarker(show, Point(p.x, p.y), Scalar(0, 0, 255), 
+          MARKER_CROSS, 20, 2);
       imshow("process", show);
-      waitKey(0);
-
-      imshow("process", show);
-      waitKey(0);
+      waitKey(0);      
     }
   }
 }

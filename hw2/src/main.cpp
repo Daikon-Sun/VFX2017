@@ -8,8 +8,9 @@ using namespace std;
 
 int main(int argc, char** agrv) 
 {
-  Mat pic1 = imread("test.JPG", IMREAD_COLOR);
-  Mat pic2 = imread("grail02.jpg", IMREAD_COLOR);
+  Mat pic1 = imread("test1.JPG", IMREAD_COLOR);
+  Mat pic2 = imread("test2.JPG", IMREAD_COLOR);
+  Mat pic3 = imread("test3.JPG", IMREAD_COLOR);
 
   vector<Mat> vec;
   vec.push_back(pic1);

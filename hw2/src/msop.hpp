@@ -21,12 +21,14 @@ const Mat HAAR_T = [&]() -> const Mat { Mat res; transpose(HAAR, res);
                                         return res.clone(); }();
 class MSOP {
 public:
-  MSOP() {}
+  MSOP() : tot_kpts(0) {}
   void process(const vector<Mat>&);
 
 private:
-  void matching();
+  void matching(const vector<Mat>&);
+  bool in_mid(const int& x) { return x >= 0 && x < 9; };
   vector< vector< vector<Keypoint> > > keypoints;
+  size_t tot_kpts;
 };
 
 #endif

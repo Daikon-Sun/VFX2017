@@ -1,14 +1,16 @@
 #include <opencv2/opencv.hpp>
-#include <iostream>
+#include <algorithm>
 #include <climits>
 #include <cmath>
+#include <iostream>
+#include <numeric>
 
 using namespace cv;
 using namespace std;
 
 #include "msop.hpp"
 
-#define MAX_LAYER           5
+#define MAX_LAYER           1
 #define G_KERN              0
 #define SIGMA_P             1.0   // pyramid smoothing
 #define SIGMA_I             1.5   // integration scale
@@ -58,8 +60,8 @@ void MSOP::process(const vector<Mat>& img_input) {
       Mat HM = (Hxx.mul(Hyy) - Hxy.mul(Hxy)) / (Hxx + Hyy);
 
       // compute keypoints
-      Mat show = img;
-      cvtColor(show, show, CV_GRAY2BGR);
+      //Mat show = img;
+      //cvtColor(show, show, CV_GRAY2BGR);
       vector<PreKeypoint> pre_kpts;
       for (int x = 60, xm = pyr[lev].cols-60; x < xm; ++x)
         for (int y = 60, ym = pyr[lev].rows-60; y < ym; ++y) {
@@ -147,8 +149,9 @@ void MSOP::process(const vector<Mat>& img_input) {
       }
 
       // compute feature descriptor
-      cerr << "pic " << i << " lev " << lev 
-           << " kpts num " << kpts.size() << endl;
+      //cerr << "pic " << i << " lev " << lev 
+      //     << " kpts num " << kpts.size() << endl;
+      tot_kpts += kpts.size();
       for(auto& p : kpts) {
         Mat m, rot;
         GaussianBlur(pyr[lev+1], m, Size(G_KERN, G_KERN), SIGMA_P);
@@ -163,13 +166,99 @@ void MSOP::process(const vector<Mat>& img_input) {
         p.patch = HAAR * p.patch * HAAR_T;
       }
       //for(int ii = 0; ii<2; ++ii) {
-      //  imshow("process", kpts[ii].patch);
-      //  waitKey(0);
+      //  cerr << kpts[ii].patch << endl;
       //}
     }
   }
-  matching();
+  matching(img_input);
 }
-void MSOP::matching() {
+void MSOP::matching(const vector<Mat>& img_input) {
+  size_t pic_num = img_input.size();
+  Point pts[3] = {Point(1, 0), Point(0, 1), Point(1, 1)};
 
+  //find mean and std for the first three nonzero Haar wavelet coefficient
+  float mean[3], sd[3];
+  for(int i = 0; i<3; ++i) {
+    vector<float> v(tot_kpts), diff(tot_kpts);
+    size_t cnt = 0;
+    for(size_t pic = 0; pic<keypoints.size(); ++pic)
+      for(size_t lev = 0; lev<MAX_LAYER; ++lev)
+        for(const auto& p:keypoints[pic][lev])
+          v[cnt++] = p.patch.at<float>(pts[i]);
+    mean[i] = std::accumulate(v.begin(), v.end(), 0.0) / tot_kpts;
+   	transform(v.begin(), v.end(), diff.begin(), 
+		          [mean, i](const float& x) { return x-mean[i]; });
+    sd[i] = sqrt(inner_product(diff.begin(), diff.end(), diff.begin(), 0.0))/3;
+  }
+
+  //put keypoints into bins
+  list<int> table[pic_num][MAX_LAYER][10][10][10];
+  for(size_t pic = 0; pic<keypoints.size(); ++pic)
+    for(size_t lev = 0; lev<MAX_LAYER; ++lev)
+      for(size_t pi = 0; pi<keypoints[pic][lev].size(); ++pi) {
+        const Keypoint& p = keypoints[pic][lev][pi];
+        int idx[3];
+        for(int i = 0; i<3; ++i) {
+          float diff = (p.patch.at<float>(pts[i])-mean[i])/sd[i];
+          if(diff <= -4.5) idx[i] = -1;
+          else if(diff >= 4.5) idx[i] = 9;
+          else idx[i] = int(diff+4.5);
+        }
+        for(int i=0; i<2; ++i) for(int j=0; j<2; ++j) for(int k=0; k<2; ++k)
+          if(in_mid(idx[0]+i) && in_mid(idx[1]+j) && in_mid(idx[2]+k)) {
+            table[pic][lev][idx[0]+i][idx[1]+j][idx[2]+k].push_back(pi);
+          }
+      }
+  
+  //match keypoints
+  for(size_t pic = 0; pic+1<keypoints.size(); ++pic) {
+    for(size_t lev = 0; lev<MAX_LAYER; ++lev) {
+      vector< pair<int, int> > match_pairs;
+      for(int i=0; i<10; ++i) for(int j=0; j<10; ++j) for(int k=0; k<10; ++k) {
+        for(auto pi : table[pic][lev][i][j][k]) {
+          const Mat& mi = keypoints[pic][lev][pi].patch;
+          float fir = FLT_MAX, sec = FLT_MAX;
+          int fir_i = -1;
+          for(auto pj : table[pic+1][lev][i][j][k]) {
+            const Mat& mj = keypoints[pic+1][lev][pj].patch;
+            Mat diff = mi - mj;
+            float err = sum(diff.mul(diff))[0];
+            if(err < fir) {
+              sec = fir;
+              fir_i = pj;
+              fir = err;
+            } else if(err < sec) {
+              sec = err;
+            }
+          }
+          if(sec != FLT_MAX && fir < 0.65 * sec)
+            match_pairs.emplace_back(pi, fir_i);
+        }
+      }
+      //const auto red = Scalar(0, 0, 255);
+      //Mat img0 = img_input[pic].clone();
+      //Mat img1 = img_input[pic+1].clone();
+      //for (const auto& p : match_pairs) {
+      //  const Keypoint& kp0 = keypoints[pic][lev][p.first];
+      //  const Keypoint& kp1 = keypoints[pic+1][lev][p.second];
+      //  drawMarker(img0, Point(kp0.x, kp0.y), red, MARKER_CROSS, 20, 2);
+      //  drawMarker(img1, Point(kp1.x, kp1.y), red, MARKER_CROSS, 20, 2);
+      //}
+      //Size sz[2];
+      //for(size_t i = 0; i<2; ++i) sz[i] = img_input[pic+i].size();
+      //Mat show(sz[0].height, sz[0].width+sz[1].width, CV_8UC3);
+      //Mat left(show, Rect(0, 0, sz[0].width, sz[0].height));
+      //Mat right(show, Rect(sz[0].width, 0, sz[1].width, sz[1].height));
+      //img0.copyTo(left);
+      //img1.copyTo(right);
+      //for(const auto& p : match_pairs) {
+      //  const Keypoint& kp0 = keypoints[pic][lev][p.first];
+      //  const Keypoint& kp1 = keypoints[pic+1][lev][p.second];
+      //  line(show, Point(kp0.x, kp0.y), 
+      //       Point(sz[0].width+kp1.x, kp1.y), red, 2, 8);
+      //}
+      //imshow("process", show);
+      //waitKey(0);
+    }
+  }
 }

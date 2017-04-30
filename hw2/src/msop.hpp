@@ -3,6 +3,9 @@
 
 #include "type.hpp"
 
+constexpr float Y_MAX_DIFF = 50;
+constexpr float THRESHOLD = 0.65;
+
 const Mat Kernel_x = (Mat_<float>(1, 3) << -0.5, 0, 0.5); 
 const Mat Kernel_y = (Mat_<float>(3, 1) << -0.5, 0, 0.5); 
 

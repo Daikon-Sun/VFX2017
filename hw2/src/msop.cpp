@@ -216,23 +216,22 @@ void MSOP::matching(const vector<Mat>& img_input) {
       vector< pair<int, int> > match_pairs;
       for(int i=0; i<10; ++i) for(int j=0; j<10; ++j) for(int k=0; k<10; ++k) {
         for(auto pi : table[pic][lev][i][j][k]) {
-          const Mat& mi = keypoints[pic][lev][pi].patch;
+          const auto& ki = keypoints[pic][lev][pi];
           float fir = FLT_MAX, sec = FLT_MAX;
           int fir_i = -1;
           for(auto pj : table[pic+1][lev][i][j][k]) {
-            const Mat& mj = keypoints[pic+1][lev][pj].patch;
-            Mat diff = mi - mj;
+            const auto& kj = keypoints[pic+1][lev][pj];
+            Mat diff = ki.patch - kj.patch;
             float err = sum(diff.mul(diff))[0];
             if(err < fir) {
               sec = fir;
               fir_i = pj;
               fir = err;
-            } else if(err < sec) {
-              sec = err;
-            }
+            } else if(err < sec) sec = err;
           }
-          if(sec != FLT_MAX && fir < 0.65 * sec)
-            match_pairs.emplace_back(pi, fir_i);
+          if(fir_i != -1 && sec != FLT_MAX && fir < THRESHOLD * sec &&
+             abs(ki.y - keypoints[pic+1][lev][fir_i].y) < Y_MAX_DIFF)
+              match_pairs.emplace_back(pi, fir_i);
         }
       }
       //const auto red = Scalar(0, 0, 255);

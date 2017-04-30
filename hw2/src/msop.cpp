@@ -28,7 +28,7 @@ void MSOP::process(const vector<Mat>& img_input) {
   namedWindow("process", WINDOW_NORMAL);
   vector<Mat> imgs(img_input);
 
-  for (auto img : imgs) {
+  for (auto& img : imgs) {
     vector<Mat> pyr;
     // image preprocessing
     cvtColor(img, img, CV_BGR2GRAY);
@@ -91,9 +91,9 @@ void MSOP::process(const vector<Mat>& img_input) {
       sort(pre_kpts.begin(), pre_kpts.end(), is_greater_r);
       if (pre_kpts.size() > KEYPOINT_NUM)
         pre_kpts.resize(KEYPOINT_NUM);
-      for (auto p : pre_kpts)
-        drawMarker(show, Point(p.x, p.y), Scalar(0, 0, 255), 
-          MARKER_CROSS, 20, 2);
+      //for (const auto& p : pre_kpts)
+      //  drawMarker(show, Point(p.x, p.y), Scalar(0, 0, 255), 
+      //    MARKER_CROSS, 20, 2);
       //imshow("process", show);
       //waitKey(0);
 
@@ -102,7 +102,7 @@ void MSOP::process(const vector<Mat>& img_input) {
       filter2D(P, Px, -1, Kernel_x);
       filter2D(P, Py, -1, Kernel_y);
       vector<Keypoint> kpts;
-      for (auto p : pre_kpts) {
+      for (const auto& p : pre_kpts) {
         float dx = (
           HM.at<float>(p.y, p.x+1) -
           HM.at<float>(p.y, p.x-1)
@@ -147,7 +147,7 @@ void MSOP::process(const vector<Mat>& img_input) {
 
       // compute feature descriptor
       cerr << "num of kpts " << kpts.size() << endl;
-      for (auto p : kpts) {
+      for(auto& p : kpts) {
         Mat m, rot;
         GaussianBlur(pyr[lev+1], m, Size(G_KERN, G_KERN), SIGMA_P);
         //cerr << p.x << " " << p.y << " " << p.t << endl;
@@ -159,8 +159,6 @@ void MSOP::process(const vector<Mat>& img_input) {
         meanStdDev(p.patch, mean, sd);
         p.patch = (p.patch-mean[0])/sd[0];
         p.patch = HAAR * p.patch * HAAR_T;
-        //imshow("process", p.patch);
-        //waitKey(0);
       }
     }
   }

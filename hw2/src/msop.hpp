@@ -3,6 +3,8 @@
 
 #include "type.hpp"
 
+constexpr int BIN_NUM = 10;
+constexpr float BOUND = (BIN_NUM/2-1)+0.5;
 constexpr float Y_MAX_DIFF = 50;
 constexpr float THRESHOLD = 0.65;
 
@@ -29,8 +31,9 @@ public:
 
 private:
   void matching(const vector<Mat>&);
-  bool in_mid(const int& x) { return x >= 0 && x < 9; };
-  vector< vector< vector<Keypoint> > > keypoints;
+  bool in_mid(const int& x) { return x >= 0 && x < BIN_NUM-1; };
+  bool is_align(const Keypoint&, const Keypoint&);
+  vector< vector<Keypoint> > keypoints;
   size_t tot_kpts;
 };
 

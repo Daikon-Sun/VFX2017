@@ -94,8 +94,8 @@ void MSOP::process(const vector<Mat>& img_input) {
       for (auto p : pre_kpts)
         drawMarker(show, Point(p.x, p.y), Scalar(0, 0, 255), 
           MARKER_CROSS, 20, 2);
-      imshow("process", show);
-      waitKey(0);
+      //imshow("process", show);
+      //waitKey(0);
 
       // sub-pixel accuracy and orientation assignment
       GaussianBlur(pyr[lev], P, Size(G_KERN, G_KERN), SIGMA_O);
@@ -146,18 +146,21 @@ void MSOP::process(const vector<Mat>& img_input) {
       }
 
       // compute feature descriptor
+      cerr << "num of kpts " << kpts.size() << endl;
       for (auto p : kpts) {
         Mat m, rot;
         GaussianBlur(pyr[lev+1], m, Size(G_KERN, G_KERN), SIGMA_P);
-        cerr << p.x << " " << p.y << " " << p.t << endl;
+        //cerr << p.x << " " << p.y << " " << p.t << endl;
         rot = getRotationMatrix2D(Point(p.x/2, p.y/2), p.t, 1);
         warpAffine(m, m, rot, m.size());
         getRectSubPix(m, Size(40, 40), Point(p.x/2, p.y/2), p.patch);
         resize(p.patch, p.patch, Size(), 0.2, 0.2);
         Scalar mean, sd;
         meanStdDev(p.patch, mean, sd);
-        imshow("process", p.patch);
-        waitKey(0);
+        p.patch = (p.patch-mean[0])/sd[0];
+        p.patch = HAAR * p.patch * HAAR_T;
+        //imshow("process", p.patch);
+        //waitKey(0);
       }
     }
   }

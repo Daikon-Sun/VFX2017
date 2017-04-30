@@ -46,7 +46,8 @@ void MSOP::process(const vector<Mat>& img_input) {
 
     // apply multi-scale Harris corner detector
     vector<Keypoint>& kpts = keypoints[i];
-    #pragma omp parallel for
+    kpts.reserve(MAX_LAYER * KEYPOINT_NUM);
+    #pragma omp parallel for schedule(dynamic, 1)
     for (int lev = 0; lev < MAX_LAYER; ++lev) {
       Mat P, Px, Py;
       GaussianBlur(pyr[lev], P, Size(G_KERN, G_KERN), SIGMA_D);
@@ -166,6 +167,7 @@ void MSOP::process(const vector<Mat>& img_input) {
     }
     tot_kpts += kpts.size();
   }
+  cerr << "start matching..." << endl;
   matching(img_input);
 }
 bool MSOP::is_align(const Keypoint& k1, const Keypoint& k2) {
@@ -177,10 +179,11 @@ void MSOP::matching(const vector<Mat>& img_input) {
 
   //find mean and std for the first three nonzero Haar wavelet coefficient
   float mean[3], sd[3];
+  #pragma omp parallel for schedule(dynamic, 1)
   for(int i = 0; i<3; ++i) {
     vector<float> v(tot_kpts), diff(tot_kpts);
     size_t cnt = 0;
-    for(size_t pic = 0; pic<keypoints.size(); ++pic)
+    for(size_t pic = 0; pic<pic_num; ++pic)
       for(const auto& p:keypoints[pic])
         v[cnt++] = p.patch.at<float>(pts[i]);
     mean[i] = std::accumulate(v.begin(), v.end(), 0.0) / tot_kpts;
@@ -191,7 +194,8 @@ void MSOP::matching(const vector<Mat>& img_input) {
 
   //put keypoints into bins
   list<int> table[pic_num][BIN_NUM][BIN_NUM][BIN_NUM];
-  for(size_t pic = 0; pic<keypoints.size(); ++pic)
+  #pragma omp parallel for schedule(dynamic, 1)
+  for(size_t pic = 0; pic<pic_num; ++pic)
     for(size_t pi = 0; pi<keypoints[pic].size(); ++pi) {
       const Keypoint& p = keypoints[pic][pi];
       int idx[3];
@@ -202,15 +206,15 @@ void MSOP::matching(const vector<Mat>& img_input) {
         else idx[i] = int(diff+BOUND);
       }
       for(int i=0; i<2; ++i) for(int j=0; j<2; ++j) for(int k=0; k<2; ++k)
-        if(in_mid(idx[0]+i) && in_mid(idx[1]+j) && in_mid(idx[2]+k)) {
+        if(in_mid(idx[0]+i) && in_mid(idx[1]+j) && in_mid(idx[2]+k))
           table[pic][idx[0]+i][idx[1]+j][idx[2]+k].push_back(pi);
-        }
     }
   
   //match keypoints
   list< tuple<int, int, float> > match_pairs[pic_num-1];
   list<float> all_sec;
-  for(size_t pic = 0; pic+1<keypoints.size(); ++pic) {
+  #pragma omp parallel for collapse(4)
+  for(size_t pic = 0; pic<pic_num-1; ++pic) {
     for(int i=0; i<BIN_NUM; ++i)
       for(int j=0; j<BIN_NUM; ++j)
         for(int k=0; k<BIN_NUM; ++k) {
@@ -222,11 +226,8 @@ void MSOP::matching(const vector<Mat>& img_input) {
               const auto& kj = keypoints[pic+1][pj];
               Mat diff = ki.patch - kj.patch;
               float err = sum(diff.mul(diff))[0];
-              if(err < fir) {
-                sec = fir;
-                fir_i = pj;
-                fir = err;
-              } else if(err < sec) sec = err;
+              if(err < fir) sec = fir, fir_i = pj, fir = err;
+              else if(err < sec) sec = err;
             }
             if(fir_i != -1 && sec != FLT_MAX && 
                is_align(ki, keypoints[pic+1][fir_i])) {
@@ -240,13 +241,14 @@ void MSOP::matching(const vector<Mat>& img_input) {
     accumulate(all_sec.begin(), all_sec.end(), 0.0)/all_sec.size();
 
   //Feature-Space Outlier Rejection based on averaged 2-NN
-  for(size_t pic = 0; pic+1<keypoints.size(); ++pic)
+  #pragma omp parallel for schedule(dynamic, 1)
+  for(size_t pic = 0; pic<pic_num-1; ++pic)
     for(auto it = match_pairs[pic].begin(); it!=match_pairs[pic].end(); )
       if(get<2>(*it) < THRESHOLD*sec_mean) ++it;
       else it = match_pairs[pic].erase(it);
 
   //visualize feature matching
-  for(size_t pic = 0; pic+1<keypoints.size(); ++pic) {
+  for(size_t pic = 0; pic<pic_num-1; ++pic) {
     const auto red = Scalar(0, 0, 255);
     Mat img0 = img_input[pic].clone();
     Mat img1 = img_input[pic+1].clone();

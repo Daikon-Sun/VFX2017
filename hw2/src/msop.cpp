@@ -7,7 +7,6 @@ using namespace cv;
 using namespace std;
 
 #include "msop.hpp"
-#include "type.hpp"
 
 #define MAX_LAYER           5
 #define G_KERN              0
@@ -26,26 +25,27 @@ bool is_greater_r(PreKeypoint i, PreKeypoint j) {
 
 void MSOP::process(const vector<Mat>& img_input) {
   namedWindow("process", WINDOW_NORMAL);
-  vector<Mat> imgs(img_input);
+  keypoints.resize(img_input.size(), vector< vector<Keypoint> >(MAX_LAYER));
 
-  for (auto& img : imgs) {
+  #pragma omp parallel for
+  for (size_t i = 0; i<img_input.size(); ++i) {
+    Mat img = img_input[i].clone();
     vector<Mat> pyr;
     // image preprocessing
     cvtColor(img, img, CV_BGR2GRAY);
     img.convertTo(img, CV_32FC1);
     img *= 1./255;
-    pyr.push_back(img);
+    pyr.push_back(img.clone());
+    pyr.resize(MAX_LAYER+1);
     for (int lev = 1; lev < MAX_LAYER+1; ++lev) {
-      pyr.push_back(Mat());
       GaussianBlur(pyr[lev-1], pyr[lev], Size(G_KERN, G_KERN), SIGMA_P);
       resize(pyr[lev], pyr[lev], Size(), 0.5, 0.5);
     }
 
     // apply multi-scale Harris corner detector
+    #pragma omp parallel for
     for (int lev = 0; lev < MAX_LAYER; ++lev) {
       Mat P, Px, Py;
-      Mat Kernel_x = (Mat_<float>(1, 3) << -0.5, 0, 0.5); 
-      Mat Kernel_y = (Mat_<float>(3, 1) << -0.5, 0, 0.5); 
       GaussianBlur(pyr[lev], P, Size(G_KERN, G_KERN), SIGMA_D);
       filter2D(P, Px, -1, Kernel_x);
       filter2D(P, Py, -1, Kernel_y);
@@ -81,7 +81,8 @@ void MSOP::process(const vector<Mat>& img_input) {
       // apply ANMS method
       for (int i = 0, n = pre_kpts.size(); i < n; ++i)
         for (int j = i+1; j < n; ++j) {
-          int newR2 = pow(pre_kpts[i].x - pre_kpts[j].x, 2) + pow(pre_kpts[i].y - pre_kpts[j].y, 2);
+          int newR2 = pow(pre_kpts[i].x - pre_kpts[j].x, 2) 
+                    + pow(pre_kpts[i].y - pre_kpts[j].y, 2);
           if (pre_kpts[i].hm < ANMS_ROBUST_RATIO * pre_kpts[j].hm) {
             if (newR2 < pre_kpts[i].minR2) pre_kpts[i].minR2 = newR2; 
           } else if (pre_kpts[j].hm < ANMS_ROBUST_RATIO * pre_kpts[i].hm) {
@@ -101,7 +102,7 @@ void MSOP::process(const vector<Mat>& img_input) {
       GaussianBlur(pyr[lev], P, Size(G_KERN, G_KERN), SIGMA_O);
       filter2D(P, Px, -1, Kernel_x);
       filter2D(P, Py, -1, Kernel_y);
-      vector<Keypoint> kpts;
+      vector<Keypoint>& kpts = keypoints[i][lev];
       for (const auto& p : pre_kpts) {
         float dx = (
           HM.at<float>(p.y, p.x+1) -
@@ -146,7 +147,8 @@ void MSOP::process(const vector<Mat>& img_input) {
       }
 
       // compute feature descriptor
-      cerr << "num of kpts " << kpts.size() << endl;
+      cerr << "pic " << i << " lev " << lev 
+           << " kpts num " << kpts.size() << endl;
       for(auto& p : kpts) {
         Mat m, rot;
         GaussianBlur(pyr[lev+1], m, Size(G_KERN, G_KERN), SIGMA_P);
@@ -160,6 +162,14 @@ void MSOP::process(const vector<Mat>& img_input) {
         p.patch = (p.patch-mean[0])/sd[0];
         p.patch = HAAR * p.patch * HAAR_T;
       }
+      //for(int ii = 0; ii<2; ++ii) {
+      //  imshow("process", kpts[ii].patch);
+      //  waitKey(0);
+      //}
     }
   }
+  matching();
+}
+void MSOP::matching() {
+
 }

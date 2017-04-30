@@ -3,7 +3,7 @@
 using namespace cv;
 using namespace std;
 
-#include "sift.hpp"
+//#include "sift.hpp"
 #include "msop.hpp"
 
 int main(int argc, char** agrv) 
@@ -14,6 +14,7 @@ int main(int argc, char** agrv)
 
   vector<Mat> vec;
   vec.push_back(pic1);
+  vec.push_back(pic2);
   MSOP msop;
   msop.process(vec);
 

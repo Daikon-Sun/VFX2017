@@ -237,14 +237,13 @@ void MSOP::matching(const vector<Mat>& img_input) {
           }
         }
   }
-  float sec_mean = 
-    accumulate(all_sec.begin(), all_sec.end(), 0.0)/all_sec.size();
+  float sec_mn = accumulate(all_sec.begin(), all_sec.end(), 0.0)/all_sec.size();
 
   //Feature-Space Outlier Rejection based on averaged 2-NN
   #pragma omp parallel for schedule(dynamic, 1)
   for(size_t pic = 0; pic<pic_num-1; ++pic)
     for(auto it = match_pairs[pic].begin(); it!=match_pairs[pic].end(); )
-      if(get<2>(*it) < THRESHOLD*sec_mean) ++it;
+      if(get<2>(*it) < THRESHOLD*sec_mn) ++it;
       else it = match_pairs[pic].erase(it);
 
   //visualize feature matching

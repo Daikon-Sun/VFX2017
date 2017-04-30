@@ -190,7 +190,7 @@ void MSOP::matching(const vector<Mat>& img_input) {
    	transform(v.begin(), v.end(), diff.begin(), 
 		          [mean, i](const float& x) { return x-mean[i]; });
     sd[i] = sqrt(inner_product(diff.begin(), diff.end(), diff.begin(), 0.0));
-    sd[i] /= (BIN_NUM-1)/3.;
+    sd[i] /= (BIN_NUM-1)/6.;
   }
 
   //put keypoints into bins

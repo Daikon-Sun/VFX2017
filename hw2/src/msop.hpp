@@ -4,7 +4,7 @@
 #include "type.hpp"
 
 constexpr int BIN_NUM = 10;
-constexpr float BOUND = (BIN_NUM/2-1)+0.5;
+constexpr float BOUND = BIN_NUM/2.0-0.5;
 constexpr float Y_MAX_DIFF = 50;
 constexpr float THRESHOLD = 0.65;
 

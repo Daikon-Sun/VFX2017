@@ -209,7 +209,7 @@ void MSOP::matching(const vector<Mat>& img_input) {
     mean[i] = std::accumulate(v.begin(), v.end(), 0.0) / tot_kpts;
    	transform(v.begin(), v.end(), diff.begin(), 
 		          [mean, i](const float& x) { return x-mean[i]; });
-    sd[i] = sqrt(inner_product(diff.begin(), diff.end(), diff.begin(), 0.0));
+    sd[i] = sqrtf(inner_product(diff.begin(), diff.end(), diff.begin(), 0.0));
     sd[i] /= (BIN_NUM-1)/6.;
   }
 
@@ -301,8 +301,8 @@ void MSOP::warp_image(const vector<Mat>& img_input) {
     Mat pic = Mat(sz, CV_8UC3, Scalar(0, 0, 0));
     float h_w = sz.width/2.0, h_h = sz.height/2.0;
     for(int y = 0; y<sz.height; ++y) for(int x = 0; x<sz.width; ++x) {
-      int nx = F * atan((x-h_w)/F) + h_w;
-      int ny = F * (y-h_h) /  sqrt(F*F+(x-h_w)*(x-h_w)) + h_h;
+      int nx = F * atanf((x-h_w)/F) + h_w;
+      int ny = F * (y-h_h) /  sqrtf(F*F+(x-h_w)*(x-h_w)) + h_h;
       //cerr << nx << " " << ny << endl;
       pic.at<Vec3b>(ny, nx) = img.at<Vec3b>(y, x); 
     }

@@ -7,13 +7,13 @@ constexpr int BIN_NUM = 10;
 constexpr float BOUND = BIN_NUM/2.0-0.5;
 constexpr float Y_MAX_DIFF = 50;
 constexpr float THRESHOLD = 0.65;
-constexpr float F = 4500;
+constexpr float F = 6500;
 
 const Mat Kernel_x = (Mat_<float>(1, 3) << -0.5, 0, 0.5); 
 const Mat Kernel_y = (Mat_<float>(3, 1) << -0.5, 0, 0.5); 
 
-constexpr float rt8 = 1/sqrt(8);
-constexpr float rt2 = 1/sqrt(2);
+constexpr float rt8 = 1/sqrtf(8);
+constexpr float rt2 = 1/sqrtf(2);
 const Mat HAAR = 
   (Mat_<float>(8, 8) << rt8, rt8, rt8, rt8, rt8, rt8, rt8, rt8,
                         rt8, rt8, rt8, rt8,-rt8,-rt8,-rt8,-rt8,

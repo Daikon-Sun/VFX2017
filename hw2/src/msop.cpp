@@ -28,6 +28,8 @@ bool is_greater_r(PreKeypoint i, PreKeypoint j) {
 void MSOP::process(const vector<Mat>& img_input) {
   namedWindow("process", WINDOW_NORMAL);
   keypoints.resize(img_input.size(), vector<Keypoint>());
+  warp_image(img_input);
+  return;
 
   #pragma omp parallel for
   for (size_t i = 0; i<img_input.size(); ++i) {
@@ -173,13 +175,31 @@ void MSOP::process(const vector<Mat>& img_input) {
 bool MSOP::is_align(const Keypoint& k1, const Keypoint& k2) {
   return abs(k1.t_y() - k2.t_y()) < Y_MAX_DIFF;
 }
+bool MSOP::check_match(const tuple<int, int, float>& mp, 
+                       size_t pic, float sec_mn) const {
+  const int& pj = get<1>(mp);
+  const auto& kj = keypoints[pic+1][pj];
+  float fir = FLT_MAX, sec = FLT_MAX;
+  int fir_i = -1;
+  #pragma omp parallel for
+  for(size_t pi = 0; pi<keypoints[pic].size(); ++pi) {
+    const auto& ki = keypoints[pic][pi];
+    Mat diff = ki.patch - kj.patch;
+    float err = sum(diff.mul(diff))[0];
+    if(err < fir) sec = fir, fir_i = pi, fir = err;
+    else if(err < sec) sec = err;
+  }
+  if(fir_i != get<0>(mp))
+    cerr << "check match " << fir_i << " " << get<0>(mp) << endl;
+  return fir_i == get<0>(mp) && fir < sec_mn * THRESHOLD;
+}
 void MSOP::matching(const vector<Mat>& img_input) {
   size_t pic_num = img_input.size();
   Point pts[3] = {Point(1, 0), Point(0, 1), Point(1, 1)};
 
   //find mean and std for the first three nonzero Haar wavelet coefficient
   float mean[3], sd[3];
-  #pragma omp parallel for schedule(dynamic, 1)
+  #pragma omp parallel
   for(int i = 0; i<3; ++i) {
     vector<float> v(tot_kpts), diff(tot_kpts);
     size_t cnt = 0;
@@ -240,11 +260,11 @@ void MSOP::matching(const vector<Mat>& img_input) {
   }
   float sec_mn = accumulate(all_sec.begin(), all_sec.end(), 0.0)/all_sec.size();
 
-  //Feature-Space Outlier Rejection based on averaged 2-NN
+  //Feature-Space Outlier Rejection based on averaged 2-NN and two-way check
   #pragma omp parallel for schedule(dynamic, 1)
   for(size_t pic = 0; pic<pic_num-1; ++pic)
     for(auto it = match_pairs[pic].begin(); it!=match_pairs[pic].end(); )
-      if(get<2>(*it) < THRESHOLD*sec_mn) ++it;
+      if(get<2>(*it) < THRESHOLD*sec_mn && check_match(*it, pic, sec_mn)) ++it;
       else it = match_pairs[pic].erase(it);
 
   //visualize feature matching
@@ -272,6 +292,21 @@ void MSOP::matching(const vector<Mat>& img_input) {
            Point(sz[0].width+kp1.t_x(), kp1.t_y()), red, 2, 8);
     }
     imshow("process", show);
+    waitKey(0);
+  }
+}
+void MSOP::warp_image(const vector<Mat>& img_input) {
+  for(const Mat& img : img_input) {
+    Size sz = img.size();
+    Mat pic = Mat(sz, CV_8UC3, Scalar(0, 0, 0));
+    float h_w = sz.width/2.0, h_h = sz.height/2.0;
+    for(int y = 0; y<sz.height; ++y) for(int x = 0; x<sz.width; ++x) {
+      int nx = F * atan((x-h_w)/F) + h_w;
+      int ny = F * (y-h_h) /  sqrt(F*F+(x-h_w)*(x-h_w)) + h_h;
+      //cerr << nx << " " << ny << endl;
+      pic.at<Vec3b>(ny, nx) = img.at<Vec3b>(y, x); 
+    }
+    imshow("process", pic);
     waitKey(0);
   }
 }

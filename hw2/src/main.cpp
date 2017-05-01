@@ -15,7 +15,7 @@ int main(int argc, char** agrv)
   vector<Mat> vec;
   vec.push_back(pic1);
   vec.push_back(pic2);
-  vec.push_back(pic3);
+  //vec.push_back(pic3);
   MSOP msop;
   msop.process(vec);
 

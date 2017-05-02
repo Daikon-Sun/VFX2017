@@ -3,13 +3,14 @@
 
 #include "type.hpp"
 
+extern float F;
 constexpr int BIN_NUM = 10;
 constexpr float BOUND = BIN_NUM/2.0-0.5;
 constexpr float Y_MAX_DIFF = 50;
 constexpr float THRESHOLD = 0.65;
-constexpr float F = 6500;
-constexpr int RANSAC_K = 300;
-constexpr int RANSAC_THRESHOLD = 16;
+//constexpr float F = 1500;
+constexpr int RANSAC_K = 500;
+constexpr int RANSAC_THRESHOLD = 4;
 
 const Mat Kernel_x = (Mat_<float>(1, 3) << -0.5, 0, 0.5); 
 const Mat Kernel_y = (Mat_<float>(3, 1) << -0.5, 0, 0.5); 

@@ -14,7 +14,7 @@ using namespace std::chrono;
 
 #include "msop.hpp"
 
-#define MAX_LAYER           5
+#define MAX_LAYER           1
 #define G_KERN              0
 #define SIGMA_P             1.0   // pyramid smoothing
 #define SIGMA_I             1.5   // integration scale
@@ -44,7 +44,7 @@ void MSOP::process(const vector<Mat>& img_input) {
   execute(bind(&MSOP::detection, this));
   execute(bind(&MSOP::matching, this));
   execute(bind(&MSOP::warping, this));
-  //execute(bind(&MSOP::visualize,this));
+  execute(bind(&MSOP::visualize,this));
   execute(bind(&MSOP::RANSAC, this));
 }
 void MSOP::detection() {
@@ -58,7 +58,7 @@ void MSOP::detection() {
     Mat img = imgs[i].clone();
     vector<Mat> pyr;
     // image preprocessing
-    cvtColor(img, img, CV_BGR2GRAY);
+    if(img.channels() == 3) cvtColor(img, img, CV_BGR2GRAY);
     img.convertTo(img, CV_32FC1);
     img *= 1./255;
     pyr.push_back(img.clone());
@@ -247,7 +247,7 @@ void MSOP::matching() {
   //match keypoints
   vector< list< tuple<int, int, float> > > pre_match(pic_num-1);
   list<float> all_sec;
-  #pragma omp parallel for collapse(4)
+  #pragma omp parallel for
   for(size_t pic = 0; pic<pic_num-1; ++pic)
     for(int i=0; i<BIN_NUM; ++i)
       for(int j=0; j<BIN_NUM; ++j)
@@ -269,11 +269,13 @@ void MSOP::matching() {
               all_sec.push_back(sec);
             }
           }
+  for(size_t pic = 0; pic<pic_num-1; ++pic)
+    cerr << pre_match[pic].size() << endl;
   float sec_mn = accumulate(all_sec.begin(), all_sec.end(), 0.0)/all_sec.size();
 
   //remove duplicate
   //Feature-Space Outlier Rejection based on averaged 2-NN and two-way check
-  #pragma omp parallel for schedule(dynamic, 1)
+  #pragma omp parallel for
   for(size_t pic = 0; pic<pic_num-1; ++pic) {
     pre_match[pic].sort();
     pre_match[pic].unique([](auto& x1, auto& x2) { 
@@ -283,6 +285,7 @@ void MSOP::matching() {
       if(get<2>(*it) < THRESHOLD*sec_mn && check_match(*it, pic, sec_mn)) ++it;
       else it = pre_match[pic].erase(it);
   }
+
   match_pairs.clear();
   match_pairs.resize(pic_num-1);
   for(size_t pic = 0; pic<pic_num-1; ++pic) {
@@ -331,11 +334,17 @@ void MSOP::warping() {
   //image warping
   for(size_t i = 0; i<imgs.size(); ++i) {
     Mat img = Mat(sz, CV_8UC3, Scalar(0, 0, 0));
+    int mxx = 0, mxy = 0, mnx = INT_MAX, mny = INT_MAX;
     for(int y = 0; y<sz.height; ++y) for(int x = 0; x<sz.width; ++x) {
       int nx, ny; tie(nx, ny) = projected_xy(sz.width, sz.height, x, y);
-      img.at<Vec3b>(ny, nx) = imgs[i].at<Vec3b>(y, x); 
+      if(img.channels() == 3) img.at<Vec3b>(ny, nx) = imgs[i].at<Vec3b>(y, x); 
+      else img.at<uchar>(ny, nx) = imgs[i].at<uchar>(y, x);
+      mxx = max(mxx, nx);
+      mxy = max(mxy, ny);
+      mnx = min(mnx, nx);
+      mny = min(mny, ny);
     }
-    img.copyTo(imgs[i]);
+    img(Rect(mnx, mny, mxx-mnx+1, mxy-mny+1)).copyTo(imgs[i]);
   }
   //feature point warping
   for(size_t i = 0; i<keypoints.size(); ++i)
@@ -372,5 +381,18 @@ void MSOP::RANSAC() {
     }
     shift[pic] = {best_sx, best_sy};
     cerr << pic << " " << best_cnt << " " << best_sx << " " << best_sy << endl;
+    const Mat& img0 = imgs[pic];
+    const Mat& img1 = imgs[pic+1];
+    Size sz[2];
+    for(size_t i = 0; i<2; ++i) sz[i] = imgs[pic+i].size();
+    Mat show = Mat::zeros(sz[0].height+abs(best_sy), sz[0].width+abs(best_sx), 
+                          CV_8UC3);
+
+    Mat left(show, Rect(0, max(0, -best_sy), sz[0].width, sz[0].height));
+    Mat right(show, Rect(best_sx, 0, sz[1].width, sz[1].height));
+    img0.copyTo(left);
+    img1.copyTo(right);
+    imshow("process", show);
+    waitKey(0);
   }
 }

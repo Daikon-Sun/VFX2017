@@ -1,13 +1,16 @@
 #include <opencv2/opencv.hpp>
 #include <algorithm>
+#include <chrono>
 #include <climits>
 #include <cmath>
+#include <functional>
 #include <iostream>
 #include <list>
 #include <numeric>
 
 using namespace cv;
 using namespace std;
+using namespace std::chrono;
 
 #include "msop.hpp"
 
@@ -25,16 +28,34 @@ using namespace std;
 bool is_greater_r(PreKeypoint i, PreKeypoint j) { 
   return (i.minR2 > j.minR2); 
 }
+void execute(function<void ()> f) {
+  using std::chrono::steady_clock;
+  steady_clock::time_point start_time = steady_clock::now();
+  f();
+  cerr << duration_cast<seconds>(steady_clock::now()-start_time).count()
+       << " seconds" << endl;
+}
 
 void MSOP::process(const vector<Mat>& img_input) {
+  for(const auto& img : img_input) imgs.push_back(img.clone());
+  pic_num = img_input.size();
+
+  using namespace std::placeholders;
+  execute(bind(&MSOP::detection, this));
+  execute(bind(&MSOP::matching, this));
+  execute(bind(&MSOP::warping, this));
+  //execute(bind(&MSOP::visualize,this));
+  execute(bind(&MSOP::RANSAC, this));
+}
+void MSOP::detection() {
+  cerr << "start " << __func__ << "...";
   namedWindow("process", WINDOW_NORMAL);
-  keypoints.resize(img_input.size(), vector<Keypoint>());
-  //warp_image(img_input);
-  //return;
+  keypoints.clear();
+  keypoints.resize(imgs.size(), vector<Keypoint>());
 
   #pragma omp parallel for
-  for (size_t i = 0; i<img_input.size(); ++i) {
-    Mat img = img_input[i].clone();
+  for (size_t i = 0; i<imgs.size(); ++i) {
+    Mat img = imgs[i].clone();
     vector<Mat> pyr;
     // image preprocessing
     cvtColor(img, img, CV_BGR2GRAY);
@@ -99,11 +120,6 @@ void MSOP::process(const vector<Mat>& img_input) {
       sort(pre_kpts.begin(), pre_kpts.end(), is_greater_r);
       if (pre_kpts.size() > KEYPOINT_NUM)
         pre_kpts.resize(KEYPOINT_NUM);
-      //for (const auto& p : pre_kpts)
-      //  drawMarker(show, Point(p.x, p.y), Scalar(0, 0, 255), 
-      //    MARKER_CROSS, 20, 2);
-      //imshow("process", show);
-      //waitKey(0);
 
       // sub-pixel accuracy and orientation assignment
       GaussianBlur(pyr[lev], P, Size(G_KERN, G_KERN), SIGMA_O);
@@ -166,15 +182,15 @@ void MSOP::process(const vector<Mat>& img_input) {
         meanStdDev(p.patch, mean, sd);
         p.patch = (p.patch-mean[0])/sd[0];
         p.patch = HAAR * p.patch * HAAR_T;
+        p.x *= pow(2, p.l);
+        p.y *= pow(2, p.l);
       }
     }
     tot_kpts += kpts.size();
   }
-  cerr << "start matching..." << endl;
-  matching(img_input);
 }
 bool MSOP::is_align(const Keypoint& k1, const Keypoint& k2) {
-  return abs(k1.t_y() - k2.t_y()) < Y_MAX_DIFF;
+  return abs(k1.y - k2.y) < Y_MAX_DIFF;
 }
 bool MSOP::check_match(const tuple<int, int, float>& mp, 
                        size_t pic, float sec_mn) const {
@@ -192,8 +208,8 @@ bool MSOP::check_match(const tuple<int, int, float>& mp,
   }
   return fir_i == get<0>(mp) && fir < sec_mn * THRESHOLD;
 }
-void MSOP::matching(const vector<Mat>& img_input) {
-  size_t pic_num = img_input.size();
+void MSOP::matching() {
+  cerr << "start " << __func__ << "...";
   Point pts[3] = {Point(1, 0), Point(0, 1), Point(1, 1)};
 
   //find mean and std for the first three nonzero Haar wavelet coefficient
@@ -207,7 +223,7 @@ void MSOP::matching(const vector<Mat>& img_input) {
         v[cnt++] = p.patch.at<float>(pts[i]);
     mean[i] = std::accumulate(v.begin(), v.end(), 0.0) / tot_kpts;
    	transform(v.begin(), v.end(), diff.begin(), 
-		          [mean, i](const float& x) { return x-mean[i]; });
+		          [mean, i](const float& v) { return v-mean[i]; });
     sd[i] = inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
     sd[i] = sqrtf(sd[i] / diff.size()) * 6.0 / BIN_NUM;
   }
@@ -215,7 +231,7 @@ void MSOP::matching(const vector<Mat>& img_input) {
   //put keypoints into bins
   list<int> table[pic_num][BIN_NUM][BIN_NUM][BIN_NUM];
   #pragma omp parallel for schedule(dynamic, 1)
-  for(size_t pic = 0; pic<pic_num; ++pic) {
+  for(size_t pic = 0; pic<pic_num; ++pic)
     for(size_t pi = 0; pi<keypoints[pic].size(); ++pi) {
       const Keypoint& p = keypoints[pic][pi];
       int idx[3];
@@ -229,10 +245,9 @@ void MSOP::matching(const vector<Mat>& img_input) {
         if(in_mid(idx[0]+i) && in_mid(idx[1]+j) && in_mid(idx[2]+k))
           table[pic][idx[0]+i][idx[1]+j][idx[2]+k].push_back(pi);
     }
-  }
   
   //match keypoints
-  list< tuple<int, int, float> > match_pairs[pic_num-1];
+  vector< list< tuple<int, int, float> > > pre_match(pic_num-1);
   list<float> all_sec;
   #pragma omp parallel for collapse(4)
   for(size_t pic = 0; pic<pic_num-1; ++pic)
@@ -252,67 +267,112 @@ void MSOP::matching(const vector<Mat>& img_input) {
             }
             if(fir_j != -1 && sec != FLT_MAX && 
                is_align(ki, keypoints[pic+1][fir_j])) {
-              match_pairs[pic].emplace_back(pi, fir_j, fir);
+              pre_match[pic].emplace_back(pi, fir_j, fir);
               all_sec.push_back(sec);
             }
           }
   float sec_mn = accumulate(all_sec.begin(), all_sec.end(), 0.0)/all_sec.size();
 
+  //remove duplicate
   //Feature-Space Outlier Rejection based on averaged 2-NN and two-way check
   #pragma omp parallel for schedule(dynamic, 1)
-  for(size_t pic = 0; pic<pic_num-1; ++pic)
-    for(auto it = match_pairs[pic].begin(); it!=match_pairs[pic].end(); )
-      if(get<2>(*it) < THRESHOLD*sec_mn && check_match(*it, pic, sec_mn)) ++it;
-      else it = match_pairs[pic].erase(it);
-
-  //remove duplicate pairs
-  #pragma omp parallel for
   for(size_t pic = 0; pic<pic_num-1; ++pic) {
-    match_pairs[pic].sort();
-    match_pairs[pic].unique([](auto& x1, auto& x2) { 
+    pre_match[pic].sort();
+    pre_match[pic].unique([](auto& x1, auto& x2) { 
                               return get<0>(x1) == get<0>(x2) && 
                                      get<1>(x1) == get<1>(x2); });
+    for(auto it = pre_match[pic].begin(); it != pre_match[pic].end();)
+      if(get<2>(*it) < THRESHOLD*sec_mn && check_match(*it, pic, sec_mn)) ++it;
+      else it = pre_match[pic].erase(it);
   }
-
-  //visualize feature matching
+  match_pairs.clear();
+  match_pairs.resize(pic_num-1);
   for(size_t pic = 0; pic<pic_num-1; ++pic) {
+    match_pairs[pic].resize(pre_match[pic].size());
+    int cnt = 0;
+    for(const auto& it : pre_match[pic])
+      match_pairs[pic][cnt++] = {get<0>(it), get<1>(it)};
+  }
+}
+void MSOP::visualize() {
+  cerr << "start " << __func__ << "...";
+  //visualize feature matching
+  for(size_t pic = 0; pic+1<keypoints.size(); ++pic) {
     const auto red = Scalar(0, 0, 255);
-    Mat img0 = img_input[pic].clone();
-    Mat img1 = img_input[pic+1].clone();
+    Mat img0 = imgs[pic].clone();
+    Mat img1 = imgs[pic+1].clone();
     for (const auto& p : match_pairs[pic]) {
-      const Keypoint& kp0 = keypoints[pic][get<0>(p)];
-      const Keypoint& kp1 = keypoints[pic+1][get<1>(p)];
-      drawMarker(img0, Point(kp0.t_x(), kp0.t_y()), red, MARKER_CROSS, 20, 2);
-      drawMarker(img1, Point(kp1.t_x(), kp1.t_y()), red, MARKER_CROSS, 20, 2);
+      const Keypoint& kp0 = keypoints[pic][p.first];
+      const Keypoint& kp1 = keypoints[pic+1][p.second];
+      drawMarker(img0, Point(kp0.x, kp0.y), red, MARKER_CROSS, 20, 2);
+      drawMarker(img1, Point(kp1.x, kp1.y), red, MARKER_CROSS, 20, 2);
     }
     Size sz[2];
-    for(size_t i = 0; i<2; ++i) sz[i] = img_input[pic+i].size();
+    for(size_t i = 0; i<2; ++i) sz[i] = imgs[pic+i].size();
     Mat show(sz[0].height, sz[0].width+sz[1].width, CV_8UC3);
     Mat left(show, Rect(0, 0, sz[0].width, sz[0].height));
     Mat right(show, Rect(sz[0].width, 0, sz[1].width, sz[1].height));
     img0.copyTo(left);
     img1.copyTo(right);
     for(const auto& p : match_pairs[pic]) {
-      const Keypoint& kp0 = keypoints[pic][get<0>(p)];
-      const Keypoint& kp1 = keypoints[pic+1][get<1>(p)];
-      line(show, Point(kp0.t_x(), kp0.t_y()), 
-           Point(sz[0].width+kp1.t_x(), kp1.t_y()), red, 2, 8);
+      const Keypoint& kp0 = keypoints[pic][p.first];
+      const Keypoint& kp1 = keypoints[pic+1][p.second];
+      line(show, Point(kp0.x, kp0.y), 
+           Point(sz[0].width+kp1.x, kp1.y), red, 2, 8);
     }
     imshow("process", show);
     waitKey(0);
   }
 }
-void MSOP::warp_image(const vector<Mat>& img_input) {
-  for(const Mat& img : img_input) {
-    Size sz = img.size();
-    Mat pic = Mat(sz, CV_8UC3, Scalar(0, 0, 0));
-    float h_w = sz.width/2.0, h_h = sz.height/2.0;
+pair<float, float> MSOP::projected_xy(float w, float h, float x, float y) {
+  return {F*atanf((x-w/2)/F) + w/2, F*(y-h/2)/sqrtf(F*F+(x-w/2)*(x-w/2)) + h/2};
+}
+void MSOP::warping() {
+  cerr << "start " << __func__ << "...";
+  Size sz = imgs[0].size();
+  //image warping
+  for(size_t i = 0; i<imgs.size(); ++i) {
+    Mat img = Mat(sz, CV_8UC3, Scalar(0, 0, 0));
     for(int y = 0; y<sz.height; ++y) for(int x = 0; x<sz.width; ++x) {
-      int nx = F * atanf((x-h_w)/F) + h_w;
-      int ny = F * (y-h_h) /  sqrtf(F*F+(x-h_w)*(x-h_w)) + h_h;
-      pic.at<Vec3b>(ny, nx) = img.at<Vec3b>(y, x); 
+      int nx, ny; tie(nx, ny) = projected_xy(sz.width, sz.height, x, y);
+      img.at<Vec3b>(ny, nx) = imgs[i].at<Vec3b>(y, x); 
     }
-    imshow("process", pic);
-    waitKey(0);
+    img.copyTo(imgs[i]);
+  }
+  //feature point warping
+  for(size_t i = 0; i<keypoints.size(); ++i)
+    for(size_t j = 0; j<keypoints[i].size(); ++j)
+      tie(keypoints[i][j].x, keypoints[i][j].y) = 
+        projected_xy(sz.width, sz.height, keypoints[i][j].x, keypoints[i][j].y);
+}
+bool MSOP::is_inliner(size_t pic, float sx, float sy, pair<int, int>& kpid) {
+  int kpid1, kpid2; tie(kpid1, kpid2) = kpid;
+  const auto& kp1 = keypoints[pic][kpid1], kp2 = keypoints[pic+1][kpid2];
+  float _sx = kp1.x - kp2.x, _sy = kp1.y - kp2.y;
+  return (sx-_sx) * (sx-_sx) + (sy-_sy) * (sy-_sy) < RANSAC_THRESHOLD;
+}
+void MSOP::RANSAC() { 
+  cerr << "start " << __func__ << "...";
+  shift.clear();
+  shift.resize(pic_num-1);
+  for(size_t pic = 0; pic<match_pairs.size(); ++pic) {
+    int best_cnt = 0, best_pair, best_sx, best_sy;
+    for(int i = 0; i<RANSAC_K; ++i) {
+      size_t id1 = rand()%match_pairs[pic].size();
+      int kpid1, kpid2; tie(kpid1, kpid2) = match_pairs[pic][id1];
+      const auto& kp1 = keypoints[pic][kpid1], kp2 = keypoints[pic+1][kpid2];
+      float sx = kp1.x - kp2.x, sy = kp1.y - kp2.y;
+      int in_cnt = 0;
+      for(size_t id2 = 0; id2<match_pairs[pic].size(); ++id2) if(id1 != id2)
+        in_cnt += is_inliner(pic, sx, sy, match_pairs[pic][id2]);
+      if(in_cnt > best_cnt) {
+        best_cnt = in_cnt;
+        best_pair = id1;
+        best_sx = sx;
+        best_sy = sy;
+      }
+    }
+    shift[pic] = {best_sx, best_sy};
+    cerr << pic << " " << best_cnt << " " << best_sx << " " << best_sy << endl;
   }
 }

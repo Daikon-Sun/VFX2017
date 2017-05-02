@@ -8,6 +8,8 @@ constexpr float BOUND = BIN_NUM/2.0-0.5;
 constexpr float Y_MAX_DIFF = 50;
 constexpr float THRESHOLD = 0.65;
 constexpr float F = 6500;
+constexpr int RANSAC_K = 300;
+constexpr int RANSAC_THRESHOLD = 16;
 
 const Mat Kernel_x = (Mat_<float>(1, 3) << -0.5, 0, 0.5); 
 const Mat Kernel_y = (Mat_<float>(3, 1) << -0.5, 0, 0.5); 
@@ -27,17 +29,28 @@ const Mat HAAR_T = [&]() -> const Mat { Mat res; transpose(HAAR, res);
                                         return res.clone(); }();
 class MSOP {
 public:
-  MSOP() : tot_kpts(0) {}
+  MSOP() : tot_kpts(0), pic_num(0) {}
   void process(const vector<Mat>&);
 
 private:
-  void matching(const vector<Mat>&);
-  void warp_image(const vector<Mat>&);
+  void visualize();
+  void detection();
+  void matching();
+  void warping();
+  void RANSAC();
+  void blending();
+
+  pair<float, float> projected_xy(float, float, float, float);
   bool in_mid(const int& x) { return x >= 0 && x < BIN_NUM-1; };
   bool is_align(const Keypoint&, const Keypoint&);
   bool check_match(const tuple<int, int, float>&, size_t, float) const;
+  bool is_inliner(size_t, float, float, pair<int, int>&);
+
+  vector< Mat > imgs;
   vector< vector<Keypoint> > keypoints;
-  size_t tot_kpts;
+  vector< vector< pair<int, int> > > match_pairs;
+  vector< pair<float, float> > shift;
+  size_t tot_kpts, pic_num;
 };
 
 #endif

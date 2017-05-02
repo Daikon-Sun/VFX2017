@@ -3,6 +3,7 @@
 #include <climits>
 #include <cmath>
 #include <iostream>
+#include <list>
 #include <numeric>
 
 using namespace cv;
@@ -28,8 +29,8 @@ bool is_greater_r(PreKeypoint i, PreKeypoint j) {
 void MSOP::process(const vector<Mat>& img_input) {
   namedWindow("process", WINDOW_NORMAL);
   keypoints.resize(img_input.size(), vector<Keypoint>());
-  warp_image(img_input);
-  return;
+  //warp_image(img_input);
+  //return;
 
   #pragma omp parallel for
   for (size_t i = 0; i<img_input.size(); ++i) {
@@ -189,8 +190,6 @@ bool MSOP::check_match(const tuple<int, int, float>& mp,
     if(err < fir) sec = fir, fir_i = pi, fir = err;
     else if(err < sec) sec = err;
   }
-  if(fir_i != get<0>(mp))
-    cerr << "check match " << fir_i << " " << get<0>(mp) << endl;
   return fir_i == get<0>(mp) && fir < sec_mn * THRESHOLD;
 }
 void MSOP::matching(const vector<Mat>& img_input) {
@@ -199,7 +198,7 @@ void MSOP::matching(const vector<Mat>& img_input) {
 
   //find mean and std for the first three nonzero Haar wavelet coefficient
   float mean[3], sd[3];
-  #pragma omp parallel
+  #pragma omp parallel for
   for(int i = 0; i<3; ++i) {
     vector<float> v(tot_kpts), diff(tot_kpts);
     size_t cnt = 0;
@@ -209,14 +208,14 @@ void MSOP::matching(const vector<Mat>& img_input) {
     mean[i] = std::accumulate(v.begin(), v.end(), 0.0) / tot_kpts;
    	transform(v.begin(), v.end(), diff.begin(), 
 		          [mean, i](const float& x) { return x-mean[i]; });
-    sd[i] = sqrtf(inner_product(diff.begin(), diff.end(), diff.begin(), 0.0));
-    sd[i] /= (BIN_NUM-1)/6.;
+    sd[i] = inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
+    sd[i] = sqrtf(sd[i] / diff.size()) * 6.0 / BIN_NUM;
   }
 
   //put keypoints into bins
   list<int> table[pic_num][BIN_NUM][BIN_NUM][BIN_NUM];
   #pragma omp parallel for schedule(dynamic, 1)
-  for(size_t pic = 0; pic<pic_num; ++pic)
+  for(size_t pic = 0; pic<pic_num; ++pic) {
     for(size_t pi = 0; pi<keypoints[pic].size(); ++pi) {
       const Keypoint& p = keypoints[pic][pi];
       int idx[3];
@@ -230,34 +229,33 @@ void MSOP::matching(const vector<Mat>& img_input) {
         if(in_mid(idx[0]+i) && in_mid(idx[1]+j) && in_mid(idx[2]+k))
           table[pic][idx[0]+i][idx[1]+j][idx[2]+k].push_back(pi);
     }
+  }
   
   //match keypoints
   list< tuple<int, int, float> > match_pairs[pic_num-1];
   list<float> all_sec;
   #pragma omp parallel for collapse(4)
-  for(size_t pic = 0; pic<pic_num-1; ++pic) {
+  for(size_t pic = 0; pic<pic_num-1; ++pic)
     for(int i=0; i<BIN_NUM; ++i)
       for(int j=0; j<BIN_NUM; ++j)
-        for(int k=0; k<BIN_NUM; ++k) {
+        for(int k=0; k<BIN_NUM; ++k)
           for(auto pi : table[pic][i][j][k]) {
             const auto& ki = keypoints[pic][pi];
             float fir = FLT_MAX, sec = FLT_MAX;
-            int fir_i = -1;
+            int fir_j = -1;
             for(auto pj : table[pic+1][i][j][k]) {
               const auto& kj = keypoints[pic+1][pj];
               Mat diff = ki.patch - kj.patch;
               float err = sum(diff.mul(diff))[0];
-              if(err < fir) sec = fir, fir_i = pj, fir = err;
+              if(err < fir) sec = fir, fir_j = pj, fir = err;
               else if(err < sec) sec = err;
             }
-            if(fir_i != -1 && sec != FLT_MAX && 
-               is_align(ki, keypoints[pic+1][fir_i])) {
-              match_pairs[pic].emplace_back(pi, fir_i, fir);
+            if(fir_j != -1 && sec != FLT_MAX && 
+               is_align(ki, keypoints[pic+1][fir_j])) {
+              match_pairs[pic].emplace_back(pi, fir_j, fir);
               all_sec.push_back(sec);
             }
           }
-        }
-  }
   float sec_mn = accumulate(all_sec.begin(), all_sec.end(), 0.0)/all_sec.size();
 
   //Feature-Space Outlier Rejection based on averaged 2-NN and two-way check
@@ -266,6 +264,15 @@ void MSOP::matching(const vector<Mat>& img_input) {
     for(auto it = match_pairs[pic].begin(); it!=match_pairs[pic].end(); )
       if(get<2>(*it) < THRESHOLD*sec_mn && check_match(*it, pic, sec_mn)) ++it;
       else it = match_pairs[pic].erase(it);
+
+  //remove duplicate pairs
+  #pragma omp parallel for
+  for(size_t pic = 0; pic<pic_num-1; ++pic) {
+    match_pairs[pic].sort();
+    match_pairs[pic].unique([](auto& x1, auto& x2) { 
+                              return get<0>(x1) == get<0>(x2) && 
+                                     get<1>(x1) == get<1>(x2); });
+  }
 
   //visualize feature matching
   for(size_t pic = 0; pic<pic_num-1; ++pic) {
@@ -303,7 +310,6 @@ void MSOP::warp_image(const vector<Mat>& img_input) {
     for(int y = 0; y<sz.height; ++y) for(int x = 0; x<sz.width; ++x) {
       int nx = F * atanf((x-h_w)/F) + h_w;
       int ny = F * (y-h_h) /  sqrtf(F*F+(x-h_w)*(x-h_w)) + h_h;
-      //cerr << nx << " " << ny << endl;
       pic.at<Vec3b>(ny, nx) = img.at<Vec3b>(y, x); 
     }
     imshow("process", pic);

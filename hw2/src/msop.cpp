@@ -86,8 +86,6 @@ void MSOP::detection() {
       Mat HM = (Hxx.mul(Hyy) - Hxy.mul(Hxy)) / (Hxx + Hyy);
 
       // compute keypoints
-      //Mat show = img;
-      //cvtColor(show, show, CV_GRAY2BGR);
       vector<PreKeypoint> pre_kpts;
       for (int x = 60, xm = pyr[lev].cols-60; x < xm; ++x)
         for (int y = 60, ym = pyr[lev].rows-60; y < ym; ++y) {

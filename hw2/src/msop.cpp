@@ -30,10 +30,10 @@ bool is_greater_r(PreKeypoint i, PreKeypoint j) {
 }
 void execute(function<void ()> f) {
   using std::chrono::steady_clock;
-  steady_clock::time_point start_time = steady_clock::now();
+  steady_clock::time_point start = steady_clock::now();
   f();
-  cerr << duration_cast<seconds>(steady_clock::now()-start_time).count()
-       << " seconds" << endl;
+  steady_clock::time_point end = steady_clock::now();
+  cerr << duration_cast<seconds>(end-start).count() << " seconds" << endl;
 }
 
 void MSOP::process(const vector<Mat>& img_input) {

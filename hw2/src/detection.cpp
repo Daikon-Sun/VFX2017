@@ -432,9 +432,7 @@ void DETECTION::SIFT() {
           for(int x = lx; x<lx+4; ++x)
             for(int y = ly; y<ly+4; ++y) {
               int ny = y-midy+HALF_DESC, nx = x-midx+HALF_DESC;
-              assert(ny < DESC_WINDOW && nx < DESC_WINDOW);
               int ori = int(orient[ny][nx]/45-1e-20);
-              assert(cntx*32 + cnty*8 + ori < 128 && cntx*32+cnty*8+ori >= 0);
               kpt.patch.at<double>(cntx*32 + cnty*8 + ori, 0) 
                 += MAG.at<double>(ny, nx);
             }

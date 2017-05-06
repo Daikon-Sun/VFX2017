@@ -1,5 +1,5 @@
-#ifndef _TYPE_HPP_
-#define _TYPE_HPP_
+#ifndef _UTIL_HPP_
+#define _UTIL_HPP_
 
 struct PreKeypoint {
   int     x;
@@ -20,5 +20,10 @@ struct Keypoint {
   Keypoint() {}
   Keypoint(float x, float y, int l, float t) : x(x), y(y), l(l), t(t) {}
 };
+
+bool check(const vector<float>&, const string&,
+           const int&, const string&);
+
+int parse(int, char**);
 
 #endif

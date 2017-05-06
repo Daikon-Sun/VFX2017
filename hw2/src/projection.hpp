@@ -3,14 +3,14 @@
 
 class PROJECTION {
 public:
-  PROJECTION(const vector<float>& para, vector<Mat>& i,
+  PROJECTION(const vector<double>& para, vector<Mat>& i,
              vector< vector<Keypoint> >& k) 
             : _para(para), keypoints(k), imgs(i) {};
   void cylindrical();
   void no_projection();
 private:
-  pair<float, float> projected_xy(float, float, float, float);
-  vector<float> _para;
+  pair<double, double> projected_xy(double, double, double, double);
+  vector<double> _para;
   vector<Mat>& imgs;
   vector< vector<Keypoint> >& keypoints;
 };

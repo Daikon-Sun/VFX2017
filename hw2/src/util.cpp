@@ -9,7 +9,7 @@ using namespace std;
 
 #include "util.hpp"
 
-typedef vector<float> Para;
+typedef vector<double> Para;
 typedef vector<Para> Paras;
 
 extern vector<string> all_detection, all_matching, all_projection;
@@ -21,7 +21,7 @@ extern vector<int> matching_cnt, projection_cnt, stitching_cnt;
 extern string in_list, out_jpg;
 extern bool verbose;
 
-bool check(const vector<float>& para, const string& name,
+bool check(const vector<double>& para, const string& name,
            const int& cnt, const string& info) {
   if((int)para.size() != cnt) {
     cout << info << " arguments: " << name << " should have " << cnt
@@ -43,7 +43,8 @@ int parse(int ac, char** av) {
       ("detection,d",
        value<int>(&detection_method)->default_value(detection_method),
        "Methods of feature detection:\n"
-       "  0: \tMSOP\n")
+       "  0: \tMSOP\n"
+       "  1: \tSIFT\n")
 
       ("matching,m",
        value<int>(&matching_method)->default_value(matching_method),
@@ -51,7 +52,7 @@ int parse(int ac, char** av) {
        "  0: \texhaustive search\n"
        "  1: \tHAAR wavelet-based hashing\n")
       ("matching_para",
-       value< vector<float> >(&matching_para)->multitoken(),
+       value< vector<double> >(&matching_para)->multitoken(),
        "Parameters of the chosen feature matching method.\n")
       
       ("projection,p",
@@ -60,7 +61,7 @@ int parse(int ac, char** av) {
        "  0: \tnone\n"
        "  1: \tcylindrical")
       ("projection_para",
-       value< vector<float> >(&projection_para)->multitoken(),
+       value< vector<double> >(&projection_para)->multitoken(),
        "Parameters of the chosen projection type.\n")
 
       ("stitching,s",
@@ -70,7 +71,7 @@ int parse(int ac, char** av) {
        "  1: \ttranslation + estimate focal length\n"
        "  2: \ttranslation + rotation\n")
       ("stitching_para", 
-       value< vector<float> >(&stitching_para)->multitoken(),
+       value< vector<double> >(&stitching_para)->multitoken(),
        "Parameters of the chosen image stitching method.\n")
       ("verbose,v", value<bool>()
        ->implicit_value(verbose, verbose?"True":"False")->composing(),

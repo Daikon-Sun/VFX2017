@@ -5,23 +5,23 @@ struct PreKeypoint {
   int     x;
   int     y;
   int     minR2;
-  float   hm;
+  double  hm;
   PreKeypoint() {}
-  PreKeypoint(int x, int y, float h) 
+  PreKeypoint(int x, int y, double h) 
     : x(x), y(y), minR2(INT_MAX), hm(h) {}
 };
 
 struct Keypoint {
-  float   x;
-  float   y;
-  int   l;
-  float   t; // orientation angle in degreees
+  double   x;
+  double   y;
+  int      l;
+  double   t; // orientation angle in degreees
   Mat     patch;
   Keypoint() {}
-  Keypoint(float x, float y, int l, float t) : x(x), y(y), l(l), t(t) {}
+  Keypoint(double x, double y, int l, double t) : x(x), y(y), l(l), t(t) {}
 };
 
-bool check(const vector<float>&, const string&,
+bool check(const vector<double>&, const string&,
            const int&, const string&);
 
 int parse(int, char**);

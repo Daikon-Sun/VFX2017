@@ -6,9 +6,9 @@ using namespace std;
 #include "util.hpp"
 #include "projection.hpp"
 
-pair<float, float> PROJECTION::projected_xy(float w, float h, float x, float y) {
+pair<double, double> PROJECTION::projected_xy(double w, double h, double x, double y) {
   return {_para[0]*atanf((x-w/2)/_para[0]) + w/2,
-          _para[0]*(y-h/2)/sqrtf(_para[0]*_para[0]+(x-w/2)*(x-w/2)) + h/2};
+          _para[0]*(y-h/2)/sqrt(_para[0]*_para[0]+(x-w/2)*(x-w/2)) + h/2};
 }
 void PROJECTION::no_projection() {
   cerr <<__func__;

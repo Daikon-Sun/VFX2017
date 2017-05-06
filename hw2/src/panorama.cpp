@@ -7,7 +7,7 @@ using namespace cv;
 using namespace std;
 using namespace std::chrono;
 
-typedef vector<float> Para;
+typedef vector<double> Para;
 
 #include "panorama.hpp"
 
@@ -51,7 +51,7 @@ void PANORAMA::execute(const T& f) {
 void PANORAMA::process() {
   //feature detection
   typedef void (DETECTION::*type1)();
-  vector<type1> detections = {&DETECTION::MSOP};
+  vector<type1> detections = {&DETECTION::MSOP, &DETECTION::SIFT};
   execute<type1>(detections[_detection_method]);
   //feature matching
   typedef void (MATCHING::*type2)();

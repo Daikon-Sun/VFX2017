@@ -10,7 +10,7 @@ using namespace std;
 #include "util.hpp"
 #include "matching.hpp"
 
-MATCHING::MATCHING(const vector<float>& para,
+MATCHING::MATCHING(const vector<double>& para,
                    vector< vector<Keypoint> >& k,
                    vector< vector< pair<int, int> > >& m)
                   : _para(para), keypoints(k), match_pairs(m) {};
@@ -18,31 +18,34 @@ MATCHING::MATCHING(const vector<float>& para,
 void MATCHING::HAAR() {
   cerr << __func__;
   int BIN_NUM = _para[0];
-  float BOUND = BIN_NUM/2.0-0.5;
-  float THRESHOLD = _para[1];
+  double BOUND = BIN_NUM/2.0-0.5;
+  double THRESHOLD = _para[1];
   Point pts[3] = {Point(1, 0), Point(0, 1), Point(1, 1)};
 
   size_t tot_kpts = 0, pic_num = keypoints.size();
   #pragma omp parallel for reduction(+:tot_kpts)
   for(size_t i = 0; i<keypoints.size(); ++i) {
     tot_kpts += keypoints[i].size();
-    for(auto& keypoint : keypoints[i])
+    for(auto& keypoint : keypoints[i]) {
+      keypoint.patch.convertTo(keypoint.patch, CV_32FC1);
       keypoint.patch = haar * keypoint.patch * haar_T;
+      keypoint.patch.convertTo(keypoint.patch, CV_64FC1);
+    }
   }
 
-  float mean[3], sd[3];
+  double mean[3], sd[3];
   #pragma omp parallel for
   for(int i = 0; i<3; ++i) {
-    vector<float> v(tot_kpts), diff(tot_kpts);
+    vector<double> v(tot_kpts), diff(tot_kpts);
     size_t cnt = 0;
     for(size_t pic = 0; pic<pic_num; ++pic)
       for(const auto& p:keypoints[pic])
-        v[cnt++] = p.patch.at<float>(pts[i]);
+        v[cnt++] = p.patch.at<double>(pts[i]);
     mean[i] = std::accumulate(v.begin(), v.end(), 0.0) / tot_kpts;
-     transform(v.begin(), v.end(), diff.begin(), 
-              [mean, i](const float& v) { return v-mean[i]; });
+    transform(v.begin(), v.end(), diff.begin(), 
+             [mean, i](const double& v) { return v-mean[i]; });
     sd[i] = inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
-    sd[i] = sqrtf(sd[i] / diff.size()) * 6.0 / BIN_NUM;
+    sd[i] = sqrt(sd[i] / diff.size()) * 6.0 / BIN_NUM;
   }
 
   list<int> table[pic_num][BIN_NUM][BIN_NUM][BIN_NUM];
@@ -52,7 +55,7 @@ void MATCHING::HAAR() {
       const Keypoint& p = keypoints[pic][pi];
       int idx[3];
       for(int i = 0; i<3; ++i) {
-        float diff = (p.patch.at<float>(pts[i])-mean[i])/sd[i];
+        double diff = (p.patch.at<double>(pts[i])-mean[i])/sd[i];
         if(diff <= -BOUND) idx[i] = -1;
         else if(diff >= BOUND) idx[i] = BIN_NUM-1;
         else idx[i] = int(diff+BOUND);
@@ -62,8 +65,8 @@ void MATCHING::HAAR() {
           table[pic][idx[0]+i][idx[1]+j][idx[2]+k].push_back(pi);
     }
 
-  vector< list< tuple<int, int, float> > > pre_match(pic_num-1);
-  list<float> all_sec;
+  vector< list< tuple<int, int, double> > > pre_match(pic_num-1);
+  list<double> all_sec;
   #pragma omp parallel for
   for(size_t pic = 0; pic<pic_num-1; ++pic)
     for(int i=0; i<BIN_NUM; ++i)
@@ -71,12 +74,12 @@ void MATCHING::HAAR() {
         for(int k=0; k<BIN_NUM; ++k)
           for(auto pi : table[pic][i][j][k]) {
             const auto& ki = keypoints[pic][pi];
-            float fir = FLT_MAX, sec = FLT_MAX;
+            double fir = FLT_MAX, sec = FLT_MAX;
             int fir_j = -1;
             for(auto pj : table[pic+1][i][j][k]) {
               const auto& kj = keypoints[pic+1][pj];
               Mat diff = ki.patch - kj.patch;
-              float err = sum(diff.mul(diff))[0];
+              double err = sum(diff.mul(diff))[0];
               if(err < fir) sec = fir, fir_j = pj, fir = err;
               else if(err < sec) sec = err;
             }
@@ -86,7 +89,7 @@ void MATCHING::HAAR() {
               all_sec.push_back(sec);
             }
           }
-  float sec_mn = accumulate(all_sec.begin(), all_sec.end(), 0.0)/all_sec.size();
+  double sec_mn = accumulate(all_sec.begin(), all_sec.end(), 0.0)/all_sec.size();
 
   #pragma omp parallel for
   for(size_t pic = 0; pic<pic_num-1; ++pic) {
@@ -122,12 +125,12 @@ void MATCHING::exhaustive() {
   for(size_t pic = 0; pic<pic_num-1; ++pic) {
     for(size_t i = 0; i<keypoints[pic].size(); ++i) {
       const auto& ki = keypoints[pic][i];
-      float min_err = FLT_MAX;
+      double min_err = FLT_MAX;
       int bestj = -1;
       for(size_t j = 0; j<keypoints[pic+1].size(); ++j) {
         const auto& kj = keypoints[pic+1][j];
         Mat diff = ki.patch - kj.patch;
-        float err = sum(diff.mul(diff))[0];
+        double err = sum(diff.mul(diff))[0];
         if(err < min_err) {
           min_err = err;
           bestj = j;
@@ -138,17 +141,17 @@ void MATCHING::exhaustive() {
     }
   }
 }
-bool MATCHING::check_match_haar(const tuple<int, int, float>& mp, 
-                           size_t pic, float sec_mn) const {
+bool MATCHING::check_match_haar(const tuple<int, int, double>& mp, 
+                           size_t pic, double sec_mn) const {
   const int& pj = get<1>(mp);
   const auto& kj = keypoints[pic+1][pj];
-  float fir = FLT_MAX, sec = FLT_MAX;
+  double fir = FLT_MAX, sec = FLT_MAX;
   int fir_i = -1;
   #pragma omp parallel for
   for(size_t pi = 0; pi<keypoints[pic].size(); ++pi) {
     const auto& ki = keypoints[pic][pi];
     Mat diff = ki.patch - kj.patch;
-    float err = sum(diff.mul(diff))[0];
+    double err = sum(diff.mul(diff))[0];
     if(err < fir) sec = fir, fir_i = pi, fir = err;
     else if(err < sec) sec = err;
   }
@@ -156,12 +159,12 @@ bool MATCHING::check_match_haar(const tuple<int, int, float>& mp,
 }
 bool MATCHING::check_match_exhaustive(int target_i, int j, size_t pic) {
   const auto& kj = keypoints[pic+1][j];
-  float min_err = FLT_MAX;
+  double min_err = FLT_MAX;
   int best_i = -1;
   for(size_t i = 0; i<keypoints[pic].size(); ++i) {
     const auto& ki = keypoints[pic][i];
     Mat diff = kj.patch - ki.patch;
-    float err = sum(diff.mul(diff))[0];
+    double err = sum(diff.mul(diff))[0];
     if(err < min_err) {
       min_err = err;
       best_i = i;

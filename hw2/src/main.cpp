@@ -5,12 +5,12 @@ using namespace boost::program_options;
 using namespace cv;
 using namespace std;
 
-typedef vector<float> Para;
+typedef vector<double> Para;
 typedef vector<Para> Paras;
 
 #include "panorama.hpp"
 
-vector<string> all_detection = {"MSOP"};
+vector<string> all_detection = {"MSOP", "SIFT"};
 vector<string> all_matching = {"exhaustive search", 
                                "HAAR wavelet-based hashing"};
 vector<string> all_projection = {"none", "cylindrical"};

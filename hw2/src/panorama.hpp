@@ -19,7 +19,7 @@ private:
   string _out_jpg;
   vector< vector< Keypoint> > _keypoints;
   vector< vector< pair<int, int> > > _match_pairs;
-  vector< pair<float, float> > _shift;
+  vector< pair<double, double> > _shift;
 };
 
 #endif

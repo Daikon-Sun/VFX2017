@@ -189,7 +189,6 @@ inline bool is_extrema(const vector<vector<Mat>>&, int, int, int, int);
 void DETECTION::SIFT() {
   cerr << __func__;
   assert(ORIENT_WINDOW%2 == 1);
-  namedWindow("process", WINDOW_NORMAL);
 
   vector<Mat> L;
   for(const auto& img : imgs) L.push_back(img.clone());
@@ -439,7 +438,6 @@ void DETECTION::SIFT() {
                 += MAG.at<double>(ny, nx);
             }
     }
-    cerr << keypoints[i].size() << endl;
   }
 }
 // helper functions

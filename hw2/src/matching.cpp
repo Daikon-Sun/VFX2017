@@ -112,6 +112,7 @@ bool MATCHING::is_align(const Keypoint& k1, const Keypoint& k2,
   return abs(k1.y - k2.y) < th;
 }
 void MATCHING::exhaustive() {
+  namedWindow("process", WINDOW_NORMAL);
   cerr << __func__;
   size_t pic_num = keypoints.size();
   match_pairs.clear();

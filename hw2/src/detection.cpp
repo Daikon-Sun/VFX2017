@@ -143,7 +143,7 @@ void DETECTION::MSOP() {
           Py.at<double>(ceil(y) , floor(x)) * (x - ceil(x) ) * (floor(y) - y) +
           Py.at<double>(floor(y), ceil(x) ) * (floor(x) - x) * (y - ceil(y) ) +
           Py.at<double>(floor(y), floor(x)) * (x - ceil(x) ) * (y - ceil(y) );
-        kpts.emplace_back(x, y, lev, atan2(uy,ux)*180/M_PI);
+        kpts.emplace_back(x, y, atan2(uy,ux)*180/M_PI);
       }
 
       // compute feature descriptor
@@ -159,14 +159,17 @@ void DETECTION::MSOP() {
         Scalar mean, sd;
         meanStdDev(p.patch, mean, sd);
         p.patch = (p.patch-mean[0])/sd[0];
-        p.x *= pow(2, p.l);
-        p.y *= pow(2, p.l);
+        p.patch.convertTo(p.patch, CV_32FC1);
+        p.patch = haar * p.patch * haar_T;
+        p.patch.convertTo(p.patch, CV_64FC1);
+        p.x *= pow(2, lev);
+        p.y *= pow(2, lev);
       }
     }
   }
 }
 
-#define OCTAVE_NUM              1
+#define OCTAVE_NUM              3
 #define OCTAVE_SCALE_NUM        3
 #define SIGMA                   pow(2, 1.0/(double)OCTAVE_SCALE_NUM)
 #define OCTAVE_LAYER            OCTAVE_SCALE_NUM+3
@@ -176,7 +179,10 @@ void DETECTION::MSOP() {
 #define CURVATURE_THRES_R       10.0
 #define CURVATURE_THRES         pow(CURVATURE_THRES_R+1, 2)/CURVATURE_THRES_R
 #define ORIENT_WINDOW           17
-#define HALF_LENGTH             (ORIENT_WINDOW-1)/2
+#define HALF_ORIENT             (ORIENT_WINDOW-1)/2
+#define DESC_WINDOW             16
+#define HALF_DESC               DESC_WINDOW/2
+#define DESC_SIGMA              0.5*DESC_WINDOW
 
 inline bool is_extrema(const vector<vector<Mat>>&, int, int, int, int);
 
@@ -187,8 +193,10 @@ void DETECTION::SIFT() {
 
   vector<Mat> L;
   for(const auto& img : imgs) L.push_back(img.clone());
-
-  for(int i=0, n=L.size(); i<n; ++i) {
+  keypoints.resize(imgs.size());
+  
+  #pragma omp parallel for
+  for(size_t i=0; i<L.size(); ++i) {
     vector<SIFTpoint> siftpoints;
     // preprocessing images
     cvtColor(L[i], L[i], CV_BGR2GRAY);
@@ -199,6 +207,7 @@ void DETECTION::SIFT() {
     /**************************************/
     vector< vector<Mat> > g_octaves(OCTAVE_NUM);  // Gaussian octaves
     vector< vector<Mat> > d_octaves(OCTAVE_NUM);  // DoG octaves
+    #pragma omp parallel for
     for (int t=0; t<OCTAVE_NUM; ++t) {
       g_octaves[t].resize(OCTAVE_LAYER);
       d_octaves[t].resize(OCTAVE_LAYER-1);
@@ -222,9 +231,10 @@ void DETECTION::SIFT() {
     /**  accurate keypoint localization  **/
     /**************************************/
     //int lim = (int)(1+(1+2*GAUSSIAN_KERN*SIGMA)/5);
-    const int lim = HALF_LENGTH+1;
+    const int lim = HALF_ORIENT+1;
+    #pragma omp parallel for collapse(2)
     for (int t=0; t<OCTAVE_NUM; ++t)
-      for (int l=1, l_max=OCTAVE_LAYER-2; l<l_max; ++l) {
+      for (int l=1; l<OCTAVE_LAYER-2; ++l) {
         //#define SHOW_PROCESS
         #ifdef SHOW_PROCESS
         Mat marked_img = g_octaves[t][l];
@@ -310,7 +320,7 @@ void DETECTION::SIFT() {
                 if(rr >= r_max) rr = r_max;
                 else if(rr < lim) rr = lim;
                 else ++good;
-                if(ll >= l_max) ll = l_max;
+                if(ll >= OCTAVE_LAYER-2) ll = OCTAVE_LAYER-2;
                 else if(ll < 1) ll = 1;
                 else ++good;
                 if(good != 3) {
@@ -321,34 +331,37 @@ void DETECTION::SIFT() {
               if(!found) continue;
               double new_value = value + 0.5 * parD.dot(h);
               // thow out low contrast
-              if(abs(new_value) < CONTRAST_THRES) {
+              if(abs(new_value) <= CONTRAST_THRES) {
                 found = false;
                 break;
               }
               // eliminate edge responses; H: Hessian
               double TrH = Dxx + Dyy;
               double DetH = Dxx * Dyy - Dxy * Dxy;
-              if(TrH * TrH / DetH > CURVATURE_THRES) {
+              if(TrH * TrH / DetH >= CURVATURE_THRES) {
                 found = false;
                 break;
               }
             }
             if(found) {
+              /**************************************/
+              /**      orientation assignment      **/
+              /**************************************/
               double sigma = PRE_SIGMA * pow(SIGMA, ll-1);
-              Rect roi = Rect(cc-HALF_LENGTH, rr-HALF_LENGTH,
+              Rect roi = Rect(cc-HALF_ORIENT, rr-HALF_ORIENT,
                               ORIENT_WINDOW, ORIENT_WINDOW);
               Mat G_W = L[i](Rect(roi)).clone();
               GaussianBlur(G_W, G_W, Size(), sigma*1.5, sigma*1.5);
               // Gaussian kernel Weight
               Mat MAG = Mat::zeros(ORIENT_WINDOW, ORIENT_WINDOW, CV_64FC1);
               double orient[ORIENT_WINDOW][ORIENT_WINDOW];
-              for(int xx = cc-HALF_LENGTH; xx<cc+HALF_LENGTH; ++xx)
-                for(int yy = rr-HALF_LENGTH; yy<rr+HALF_LENGTH; ++yy) {
+              for(int xx = cc-HALF_ORIENT; xx<cc+HALF_ORIENT; ++xx)
+                for(int yy = rr-HALF_ORIENT; yy<rr+HALF_ORIENT; ++yy) {
                   double dx = g_octaves[t][ll].at<double>(yy, xx+1) -
                               g_octaves[t][ll].at<double>(yy, xx-1);
                   double dy = g_octaves[t][ll].at<double>(yy+1, xx) -
                               g_octaves[t][ll].at<double>(yy-1, xx);
-                  int ny = yy-rr+HALF_LENGTH, nx = xx-cc+HALF_LENGTH;
+                  int ny = yy-rr+HALF_ORIENT, nx = xx-cc+HALF_ORIENT;
                   MAG.at<double>(ny, nx) = sqrt(dx*dx + dy*dy);
                   orient[ny][nx] = atan2(dy, dx) * 180 / M_PI + 180;
                 }
@@ -356,23 +369,23 @@ void DETECTION::SIFT() {
               MAG = MAG.mul(G_W);
               // orientation assignment with histogram
               vector<double> bins(38);
-              for(int nx = 0; nx<2*HALF_LENGTH; ++nx)
-                for(int ny = 0; ny<2*HALF_LENGTH; ++ny)
+              for(int nx = 0; nx<2*HALF_ORIENT; ++nx)
+                for(int ny = 0; ny<2*HALF_ORIENT; ++ny)
                   bins[int(orient[ny][nx]/10-1e-20)+1] += MAG.at<double>(ny, nx);
               bins[0] = bins[36], bins[37] = bins[1];
               int mx1i = max_element(bins.begin()+1, bins.end()-1)-bins.begin();
               double better_mx1i = (bins[mx1i+1]-bins[mx1i-1]+bins[mx1i]) / 
                                     2 / bins[mx1i] + mx1i - 1;
-              siftpoints.emplace_back(cc, rr, ll, better_mx1i*10+5);
+              siftpoints.emplace_back(cc, rr, ll, better_mx1i*10+5, t);
               double mx1 = bins[mx1i];
-              bins[mx1i] = 0;
-              // consider second largest peak
-              int mx2i = max_element(bins.begin(), bins.end()) - bins.begin();
-              double mx2 = bins[mx2i];
-              if(mx2 >= mx1*0.8) {
-                double better_mx2i = (bins[mx2i+1]-bins[mx2i-1]+bins[mx2i]) / 
-                                      2 / bins[mx2i] + mx2i - 1;
-                siftpoints.emplace_back(cc, rr, ll, better_mx2i*10+5);
+              // consider all the rest w.r.t. the maximum peak
+              for(int mx2i = 1; mx2i < 37; ++mx2i) {
+                double mx2 = bins[mx2i];
+                if(mx2i != mx1i && mx2 >= mx1*0.8) {
+                  double better_mx2i = (bins[mx2i+1]-bins[mx2i-1]+bins[mx2i]) / 
+                                        2 / bins[mx2i] + mx2i - 1;
+                  siftpoints.emplace_back(cc, rr, ll, better_mx2i*10+5, t);
+                }
               }
               #ifdef SHOW_PROCESS
               drawMarker(marked_img, Point(cc, rr),
@@ -385,20 +398,52 @@ void DETECTION::SIFT() {
         waitKey(0);
         #endif
       }
-  }
-    /**************************************/
-    /**      orientation assignment      **/
-    /**************************************/
-
-
     /**************************************/
     /**       keypoint descriptor        **/
     /**************************************/
-  //cerr << "here" << endl;
-  exit(0);
+    keypoints[i].reserve(siftpoints.size()); 
+    #pragma omp parallel for
+    for(size_t j = 0; j<siftpoints.size(); ++j) {
+      auto& spt = siftpoints[j];
+      const int& midx = spt.x, midy = spt.y;
+      keypoints[i].emplace_back(midx, midy, spt.t);
+      Rect roi = Rect(midx-HALF_DESC, midy-HALF_DESC, DESC_WINDOW, DESC_WINDOW);
+      Mat G_W = L[i](Rect(roi)).clone();
+      GaussianBlur(G_W, G_W, Size(), DESC_SIGMA, DESC_SIGMA);
+      double orient[DESC_WINDOW][DESC_WINDOW];
+      Mat MAG = Mat::zeros(DESC_WINDOW, DESC_WINDOW, CV_64FC1);
+      for(int x = midx-HALF_DESC; x<midx+HALF_DESC; ++x)
+        for(int y = midy-HALF_DESC; y<midy+HALF_DESC; ++y) {
+          double dx = g_octaves[spt.oc][spt.l].at<double>(y, x+1) -
+                      g_octaves[spt.oc][spt.l].at<double>(y, x-1);
+          double dy = g_octaves[spt.oc][spt.l].at<double>(y+1, x) -
+                      g_octaves[spt.oc][spt.l].at<double>(y-1, x);
+          int ny = y-midy+HALF_DESC, nx = x-midx+HALF_DESC;
+          MAG.at<double>(ny, nx) = sqrt(dx*dx + dy*dy);
+          orient[ny][nx] = atan2(dy, dx) * 180 / M_PI + 180 - spt.t;
+          if(orient[ny][nx] >= 360) orient[ny][nx] -= 360;
+          if(orient[ny][nx] < 0) orient[ny][nx] += 360;
+        }
+      MAG = MAG.mul(G_W);
+      auto& kpt = keypoints[i].back();
+      kpt.patch = Mat::zeros(128, 1, CV_64FC1);
+      for(int lx = midx-HALF_DESC, cntx = 0; cntx<4; lx+=4, ++cntx)
+        for(int ly = midy-HALF_DESC, cnty = 0; cnty<4; ly+=4, ++cnty)
+          for(int x = lx; x<lx+4; ++x)
+            for(int y = ly; y<ly+4; ++y) {
+              int ny = y-midy+HALF_DESC, nx = x-midx+HALF_DESC;
+              assert(ny < DESC_WINDOW && nx < DESC_WINDOW);
+              int ori = int(orient[ny][nx]/45-1e-20);
+              assert(cntx*32 + cnty*8 + ori < 128 && cntx*32+cnty*8+ori >= 0);
+              kpt.patch.at<double>(cntx*32 + cnty*8 + ori, 0) 
+                += MAG.at<double>(ny, nx);
+            }
+    }
+  }
 }
 // helper functions
-inline bool is_extrema(const vector<vector<Mat>>& img, int t, int l, int r, int c) {
+inline bool is_extrema(const vector<vector<Mat>>& img,
+                       int t, int l, int r, int c) {
   double value = img[t][l].at<double>(r, c);
   return ((
     value <= img[t][l].at<double>(r+1, c+1) &&

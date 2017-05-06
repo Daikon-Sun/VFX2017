@@ -25,7 +25,7 @@ PANORAMA::PANORAMA(const string& in_list, const string& out_jpg,
                     _stitching_method(stitching_method), 
                     _out_jpg(out_jpg),
                     DETECTION(_imgs, _keypoints),
-                    MATCHING(matching_para, _keypoints, _match_pairs),
+                    MATCHING(matching_para, _imgs, _keypoints, _match_pairs),
                     PROJECTION(projection_para, _imgs, _keypoints),
                     STITCHING(stitching_para, _imgs,
                               _keypoints, _match_pairs, _shift) {

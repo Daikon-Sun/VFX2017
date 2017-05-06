@@ -11,9 +11,10 @@ using namespace std;
 #include "matching.hpp"
 
 MATCHING::MATCHING(const vector<double>& para,
+                   const vector<Mat>& i,
                    vector< vector<Keypoint> >& k,
                    vector< vector< pair<int, int> > >& m)
-                  : _para(para), keypoints(k), match_pairs(m) {};
+                  : _para(para), imgs(i), keypoints(k), match_pairs(m) {};
 
 void MATCHING::HAAR() {
   cerr << __func__;
@@ -23,15 +24,7 @@ void MATCHING::HAAR() {
   Point pts[3] = {Point(1, 0), Point(0, 1), Point(1, 1)};
 
   size_t tot_kpts = 0, pic_num = keypoints.size();
-  #pragma omp parallel for reduction(+:tot_kpts)
-  for(size_t i = 0; i<keypoints.size(); ++i) {
-    tot_kpts += keypoints[i].size();
-    for(auto& keypoint : keypoints[i]) {
-      keypoint.patch.convertTo(keypoint.patch, CV_32FC1);
-      keypoint.patch = haar * keypoint.patch * haar_T;
-      keypoint.patch.convertTo(keypoint.patch, CV_64FC1);
-    }
-  }
+  for(size_t i = 0; i<keypoints.size(); ++i) tot_kpts += keypoints[i].size();
 
   double mean[3], sd[3];
   #pragma omp parallel for
@@ -139,6 +132,30 @@ void MATCHING::exhaustive() {
       if(bestj != -1 && check_match_exhaustive(i, bestj, pic))
         match_pairs[pic].emplace_back(i, bestj);
     }
+    const auto red = Scalar(0, 0, 255);
+    Mat img0 = imgs[pic].clone();
+    Mat img1 = imgs[pic+1].clone();
+    for (const auto& p : match_pairs[pic]) {
+      const Keypoint& kp0 = keypoints[pic][p.first];
+      const Keypoint& kp1 = keypoints[pic+1][p.second];
+      drawMarker(img0, Point(kp0.x, kp0.y), red, MARKER_CROSS, 20, 2);
+      drawMarker(img1, Point(kp1.x, kp1.y), red, MARKER_CROSS, 20, 2);
+    }
+    Size sz[2];
+    for(size_t i = 0; i<2; ++i) sz[i] = imgs[pic+i].size();
+    Mat show(sz[0].height, sz[0].width+sz[1].width, CV_8UC3);
+    Mat left(show, Rect(0, 0, sz[0].width, sz[0].height));
+    Mat right(show, Rect(sz[0].width, 0, sz[1].width, sz[1].height));
+    img0.copyTo(left);
+    img1.copyTo(right);
+    for(const auto& p : match_pairs[pic]) {
+      const Keypoint& kp0 = keypoints[pic][p.first];
+      const Keypoint& kp1 = keypoints[pic+1][p.second];
+      line(show, Point(kp0.x, kp0.y), 
+           Point(sz[0].width+kp1.x, kp1.y), red, 2, 8);
+    }
+    imshow("process", show);
+    waitKey(0);
   }
 }
 bool MATCHING::check_match_haar(const tuple<int, int, double>& mp, 

@@ -14,18 +14,18 @@ struct PreKeypoint {
 struct Keypoint {
   double   x;
   double   y;
-  int      l;
   double   t; // orientation angle in degreees
   Mat     patch;
   Keypoint() {}
-  Keypoint(double x, double y, int l, double t) : x(x), y(y), l(l), t(t) {}
+  Keypoint(double x, double y, double t) : x(x), y(y), t(t) {}
 };
 
 struct SIFTpoint {
-  int x, y, l;
-  double t;
+  int x, y, l, oc;
+  double t; // orientation angle in degreees
   SIFTpoint() {};
-  SIFTpoint(int x, int y, int l, double t) : x(x), y(y), l(l), t(t) {};
+  SIFTpoint(int x, int y, int l, double t, int oc) 
+    : x(x), y(y), l(l), t(t), oc(oc) {};
 
 };
 

@@ -26,6 +26,7 @@ void STITCHING::translation() {
   size_t pic_num = imgs.size();
   shift.clear();
   shift.resize(pic_num-1);
+  #pragma omp parallel for
   for(size_t pic = 0; pic<match_pairs.size(); ++pic) {
     int best_cnt = 0, best_pair, best_sx, best_sy;
     const size_t sz = match_pairs[pic].size();
@@ -45,7 +46,6 @@ void STITCHING::translation() {
         best_pair = id1;
         best_sx = sx;
         best_sy = sy;
-        //best_f = f;
       }
     }
     shift[pic] = {best_sx, best_sy};
@@ -73,6 +73,7 @@ void STITCHING::focal_length() {
   size_t pic_num = imgs.size();
   shift.clear();
   shift.resize(pic_num-1);
+  #pragma omp parallel for
   for(size_t pic = 0; pic<match_pairs.size(); ++pic) {
     int best_cnt1 = 0, best_cnt2 = 0, best_pair, best_sx, best_sy;
     const size_t sz = match_pairs[pic].size();

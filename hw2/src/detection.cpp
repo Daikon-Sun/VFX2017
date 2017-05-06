@@ -158,7 +158,6 @@ void DETECTION::MSOP() {
         Scalar mean, sd;
         meanStdDev(p.patch, mean, sd);
         p.patch = (p.patch-mean[0])/sd[0];
-        //p.patch = HAAR * p.patch * HAAR_T;
         p.x *= pow(2, p.l);
         p.y *= pow(2, p.l);
       }

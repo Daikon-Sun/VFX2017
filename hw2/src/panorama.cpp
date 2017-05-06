@@ -50,22 +50,22 @@ void PANORAMA::execute(const T& f) {
 }
 void PANORAMA::process() {
   //feature detection
-  auto type1 = &DETECTION::MSOP;
-  vector<decltype(type1)> detections = {&DETECTION::MSOP};
-  execute<decltype(type1)>(detections[_detection_method]);
+  typedef void (DETECTION::*type1)();
+  vector<type1> detections = {&DETECTION::MSOP};
+  execute<type1>(detections[_detection_method]);
   //feature matching
-  auto type2 = &MATCHING::HAAR;
-  vector<decltype(type2)> matchings = {&MATCHING::exhaustive, &MATCHING::HAAR};
-  execute<decltype(type2)>(matchings[_matching_method]);
+  typedef void (MATCHING::*type2)();
+  vector<type2> matchings = {&MATCHING::exhaustive, &MATCHING::HAAR};
+  execute<type2>(matchings[_matching_method]);
   //projection of both images and features
-  auto type3 = &PROJECTION::cylindrical;
-  vector<decltype(type3)> projections = {&PROJECTION::no_projection,
-                                         &PROJECTION::cylindrical};
-  execute<decltype(type3)>(projections[_projection_method]);
+  typedef void(PROJECTION::*type3)();
+  vector<type3> projections = {&PROJECTION::no_projection, 
+                               &PROJECTION::cylindrical};
+  execute<type3>(projections[_projection_method]);
   //image stitching
-  auto type4 = &STITCHING::translation;
-  vector<decltype(type4)> stitchings = {&STITCHING::translation};
-  execute<decltype(type4)>(stitchings[_stitching_method]);
+  typedef void(STITCHING::*type4)();
+  vector<type4> stitchings = {&STITCHING::translation};
+  execute<type4>(stitchings[_stitching_method]);
 }
 void PANORAMA::visualize() {
   cerr << __func__ << endl;

@@ -102,6 +102,7 @@ void MATCHING::HAAR() {
 
   match_pairs.clear();
   match_pairs.resize(pic_num-1);
+  #pragma omp parallel for
   for(size_t pic = 0; pic<pic_num-1; ++pic) {
     match_pairs[pic].resize(pre_match[pic].size());
     int cnt = 0;
@@ -131,4 +132,12 @@ bool MATCHING::check_match(const vector< vector<Keypoint> >& keypoints,
   return fir_i == get<0>(mp) && fir < sec_mn * _para[1];
 }
 void MATCHING::exhaustive() {
+  size_t pic_num = keypoints.size();
+  match_pairs.clear();
+  match_pairs.resize(pic_num-1);
+  for(size_t pic = 0; pic<pic_num-1; ++pic) {
+    for(const auto& k : keypoints[pic]) {
+      
+    }
+  }
 }

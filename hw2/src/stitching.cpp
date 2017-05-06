@@ -49,19 +49,19 @@ void STITCHING::translation() {
       }
     }
     shift[pic] = {best_sx, best_sy};
-    //sz1 = imgs[pic].size();
-    //sz2 = imgs[pic+1].size();
-    //const Mat& img0 = imgs[pic];
-    //const Mat& img1 = imgs[pic+1];
-    //Mat show = Mat::zeros(sz1.height+abs(best_sy), sz2.width+abs(best_sx), 
-    //                      CV_8UC3);
-    //Mat left(show, Rect(0, max(0, -best_sy), sz1.width, sz1.height));
-    //Mat right(show, Rect(best_sx, max(0, best_sy), sz2.width, sz2.height));
-    //img0.copyTo(left);
-    //img1.copyTo(right);
-    //namedWindow("process", WINDOW_NORMAL);
-    //imshow("process", show);
-    //waitKey(0);
+    sz1 = imgs[pic].size();
+    sz2 = imgs[pic+1].size();
+    const Mat& img0 = imgs[pic];
+    const Mat& img1 = imgs[pic+1];
+    Mat show = Mat::zeros(sz1.height+abs(best_sy), sz2.width+abs(best_sx), 
+                          CV_8UC3);
+    Mat left(show, Rect(0, max(0, -best_sy), sz1.width, sz1.height));
+    Mat right(show, Rect(best_sx, max(0, best_sy), sz2.width, sz2.height));
+    img0.copyTo(left);
+    img1.copyTo(right);
+    namedWindow("process", WINDOW_NORMAL);
+    imshow("process", show);
+    waitKey(0);
   }
 }
 pair<float, float> STITCHING::cylindrical_projection(float f, float w, float h, 

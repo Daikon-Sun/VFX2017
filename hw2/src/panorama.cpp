@@ -37,45 +37,35 @@ PANORAMA::PANORAMA(const string& in_list, const string& out_jpg,
     _imgs.push_back(tmp.clone());
   }
 };
-void PANORAMA::process() {
+template<typename T>
+void PANORAMA::execute(const T& f) {
   using std::chrono::steady_clock;
-  steady_clock::time_point start, end;
-
+  steady_clock::time_point st, en;
   cerr << "start ";
-  start = steady_clock::now();
-  switch(_detection_method) {
-     case 0: MSOP(); break;
-    default: MSOP();
-  }
-  end = steady_clock::now();
-  cerr << " " << duration_cast<seconds>(end-start).count() << " secs" << endl;
-
-  cerr << "start ";
-  switch(_matching_method) {
-     case 1: HAAR(); break;
-    default: HAAR();
-  }
-  end = steady_clock::now();
-  cerr << " " << duration_cast<seconds>(end-start).count() << " secs" << endl;
-
-  cerr << "start ";
-  switch(_projection_method) {
-     case 0: no_projection(); break;
-     case 1: cylindrical(); break;
-    default: cylindrical();
-  }
-  end = steady_clock::now();
-  cerr << " " << duration_cast<seconds>(end-start).count() << " secs" << endl;
-
-  //visualize();
-  cerr << "start ";
-  switch(_stitching_method) {
-     case 0: translation(); break;
-     case 1: focal_length(); break;
-    default: translation(); break;
-  }
-  end = steady_clock::now();
-  cerr << " " << duration_cast<seconds>(end-start).count() << " secs" << endl;
+  st = steady_clock::now();
+  (this->*f)();
+  en = steady_clock::now();
+  cerr << " " << duration_cast<milliseconds>(en-st).count()/1000.0 
+       << " secs" << endl;
+}
+void PANORAMA::process() {
+  //feature detection
+  auto type1 = &DETECTION::MSOP;
+  vector<decltype(type1)> detections = {&DETECTION::MSOP};
+  execute<decltype(type1)>(detections[_detection_method]);
+  //feature matching
+  auto type2 = &MATCHING::HAAR;
+  vector<decltype(type2)> matchings = {&MATCHING::exhaustive, &MATCHING::HAAR};
+  execute<decltype(type2)>(matchings[_matching_method]);
+  //projection of both images and features
+  auto type3 = &PROJECTION::cylindrical;
+  vector<decltype(type3)> projections = {&PROJECTION::no_projection,
+                                         &PROJECTION::cylindrical};
+  execute<decltype(type3)>(projections[_projection_method]);
+  //image stitching
+  auto type4 = &STITCHING::translation;
+  vector<decltype(type4)> stitchings = {&STITCHING::translation};
+  execute<decltype(type4)>(stitchings[_stitching_method]);
 }
 void PANORAMA::visualize() {
   cerr << __func__ << endl;

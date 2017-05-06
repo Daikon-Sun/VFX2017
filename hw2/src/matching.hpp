@@ -20,6 +20,7 @@ public:
   MATCHING(const vector<float>&, vector< vector<Keypoint> >&,
            vector< vector< pair<int, int> > >&);
   void HAAR();
+  void exhaustive();
 private:
   bool in_mid(const int&);
   bool is_align(const Keypoint&, const Keypoint&);

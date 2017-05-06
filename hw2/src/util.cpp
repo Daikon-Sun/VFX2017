@@ -100,9 +100,6 @@ int parse(int ac, char** av) {
     all_stitching_para[stitching_method] = stitching_para;
   }
 
-  if(projection_para.empty() && stitching_method == 0)
-    stitching_method = 1;
-
   verbose = vm.count("verbose");
 
   return 1;

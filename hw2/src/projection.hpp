@@ -6,7 +6,6 @@ public:
   PROJECTION(const vector<float>& para, vector<Mat>& i,
              vector< vector<Keypoint> >& k) 
             : _para(para), keypoints(k), imgs(i) {};
-protected:
   void cylindrical();
   void no_projection();
 private:

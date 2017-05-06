@@ -130,3 +130,5 @@ bool MATCHING::check_match(const vector< vector<Keypoint> >& keypoints,
   }
   return fir_i == get<0>(mp) && fir < sec_mn * _para[1];
 }
+void MATCHING::exhaustive() {
+}

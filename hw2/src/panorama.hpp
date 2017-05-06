@@ -13,6 +13,7 @@ public:
   void process();
   void visualize();
 private:
+  template<typename T> void execute(const T& f);
   vector<Mat> _imgs;
   int _detection_method, _matching_method, _projection_method, _stitching_method;
   string _out_jpg;

@@ -68,12 +68,14 @@ void PANORAMA::process() {
   cerr << " " << duration_cast<seconds>(end-start).count() << " secs" << endl;
 
   //visualize();
-  //cerr << "start ";
+  cerr << "start ";
   switch(_stitching_method) {
      case 0: translation(); break;
-     //case 1: focal_length(imgs, _keypoints, _match_pairs); break;
+     case 1: focal_length(); break;
     default: translation(); break;
   }
+  end = steady_clock::now();
+  cerr << " " << duration_cast<seconds>(end-start).count() << " secs" << endl;
 }
 void PANORAMA::visualize() {
   cerr << __func__ << endl;

@@ -181,7 +181,8 @@ void DETECTION::MSOP() {
 inline bool is_extrema(const vector<vector<Mat>>&, int, int, int, int);
 
 void DETECTION::SIFT() {
-  assert(ORIENT_WINDOW%2 == 0);
+  cerr << __func__;
+  assert(ORIENT_WINDOW%2 == 1);
   namedWindow("process", WINDOW_NORMAL);
 
   vector<Mat> L;
@@ -342,21 +343,22 @@ void DETECTION::SIFT() {
               Mat MAG = Mat::zeros(ORIENT_WINDOW, ORIENT_WINDOW, CV_64FC1);
               double orient[ORIENT_WINDOW][ORIENT_WINDOW];
               for(int xx = cc-HALF_LENGTH; xx<cc+HALF_LENGTH; ++xx)
-                for(int yy = rr-HALF_LENGTH; yy<rr+HALF_LENGTH; ++rr) {
+                for(int yy = rr-HALF_LENGTH; yy<rr+HALF_LENGTH; ++yy) {
                   double dx = g_octaves[t][ll].at<double>(yy, xx+1) -
                               g_octaves[t][ll].at<double>(yy, xx-1);
                   double dy = g_octaves[t][ll].at<double>(yy+1, xx) -
                               g_octaves[t][ll].at<double>(yy-1, xx);
-                  MAG.at<double>(yy, xx) = sqrt(dx*dx + dy*dy);
-                  orient[yy][xx] = atan(dy / dx) * 180 / M_PI;
+                  int ny = yy-rr+HALF_LENGTH, nx = xx-cc+HALF_LENGTH;
+                  MAG.at<double>(ny, nx) = sqrt(dx*dx + dy*dy);
+                  orient[ny][nx] = atan2(dy, dx) * 180 / M_PI + 180;
                 }
               // weighted by Gaussian kernel
               MAG = MAG.mul(G_W);
               // orientation assignment with histogram
-              vector<int> bins(38);
-              for(int xx = cc-HALF_LENGTH; xx<cc+HALF_LENGTH; ++xx)
-                for(int yy = rr-HALF_LENGTH; yy<rr+HALF_LENGTH; ++rr)
-                  bins[int(orient[yy][xx]/10-1e-20)+1] += MAG.at<double>(yy, xx);
+              vector<double> bins(38);
+              for(int nx = 0; nx<2*HALF_LENGTH; ++nx)
+                for(int ny = 0; ny<2*HALF_LENGTH; ++ny)
+                  bins[int(orient[ny][nx]/10-1e-20)+1] += MAG.at<double>(ny, nx);
               bins[0] = bins[36], bins[37] = bins[1];
               int mx1i = max_element(bins.begin()+1, bins.end()-1)-bins.begin();
               double better_mx1i = (bins[mx1i+1]-bins[mx1i-1]+bins[mx1i]) / 

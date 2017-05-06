@@ -27,7 +27,7 @@ bool STITCHING::is_inliner(size_t pic, const Mat& sol,
   const auto& kp1 = keypoints[pic][kpid1], kp2 = keypoints[pic+1][kpid2];
   Mat pos1 = (Mat_<float>(3, 1) << kp1.x, kp1.y, 1);
   pos1 = sol * pos1;
-  Mat pos2 = (Mat_<float>(2, 1) << kp2.x, kp2.x);
+  Mat pos2 = (Mat_<float>(2, 1) << kp2.x, kp2.y);
   Mat err = pos1 - pos2;
   return sum(err.mul(err))[0] < _para[1];
 }
@@ -139,7 +139,7 @@ void STITCHING::rotation() {
   #pragma omp parallel for
   for(size_t pic = 0; pic<match_pairs.size(); ++pic) {
     Mat best_sol;
-    int best_cnt = 0;
+    int best_cnt1 = 0, best_cnt2 = 0;
     const size_t sz = match_pairs[pic].size();
     for(int i = 0; i<int(_para[0]); ++i) {
       size_t id1 = rand()%sz;
@@ -161,11 +161,16 @@ void STITCHING::rotation() {
       Mat pos = (Mat_<float>(2, 3) << kp12.x, kp22.x, kp32.x,
                                       kp12.y, kp22.y, kp32.y);
       Mat sol = pos * rot.inv();
-      int in_cnt = 0;
-      for(size_t id3 = 0; id3<match_pairs[pic].size(); ++id3) if(id3 != id1)
-        in_cnt += is_inliner(pic, sol, match_pairs[pic][id3]);
-      if(in_cnt > best_cnt) {
-        best_cnt = in_cnt;
+      int in_cnt1 = 0, in_cnt2 = 0;
+      for(size_t id3 = 0; id3<match_pairs[pic].size(); ++id3) if(id3 != id1) {
+        in_cnt1 += is_inliner(pic, sol, match_pairs[pic][id3]);
+        _para[1] /= 2;
+        in_cnt2 += is_inliner(pic, sol, match_pairs[pic][id3]);
+        _para[1] *= 2;
+      }
+      if(in_cnt1 > best_cnt1 || (in_cnt1 == best_cnt1 && in_cnt2 > best_cnt2)) {
+        best_cnt1 = in_cnt1;
+        best_cnt2 = in_cnt2;
         sol.copyTo(best_sol);
       }
     }
@@ -180,20 +185,20 @@ void STITCHING::rotation() {
       miny = min(miny, pos.at<float>(1, 0));
       maxy = max(maxy, pos.at<float>(1, 0));
     }
-    const Mat& img1 = imgs[pic];
-    const Mat& img2 = imgs[pic+1];
-    Mat show = Mat::zeros(int(maxy-miny)+1, int(maxx-minx)+1, CV_8UC3);
-    Mat right(show, Rect(-minx, -miny, sz2.width, sz2.height));
-    img2.copyTo(right);
-    for(int x = 0; x<sz1.width; ++x) for(int y = 0; y<sz1.height; ++y) {
-      Mat pos = (Mat_<float>(3, 1) << x, y, 1);
-      pos = best_sol * pos;
-      int nx = int(pos.at<float>(0, 0)+0.5-minx);
-      int ny = int(pos.at<float>(1, 0)+0.5-miny);
-      show.at<Vec3b>(ny, nx) = img1.at<Vec3b>(y, x);
-    }
-    namedWindow("process", WINDOW_NORMAL);
-    imshow("process", show);
-    waitKey(0);
+    //const Mat& img1 = imgs[pic];
+    //const Mat& img2 = imgs[pic+1];
+    //Mat show = Mat::zeros(int(maxy-miny)+1, int(maxx-minx)+1, CV_8UC3);
+    //for(int x = 0; x<sz1.width; ++x) for(int y = 0; y<sz1.height; ++y) {
+    //  Mat pos = (Mat_<float>(3, 1) << x, y, 1);
+    //  pos = best_sol * pos;
+    //  int nx = int(pos.at<float>(0, 0)+0.5-minx);
+    //  int ny = int(pos.at<float>(1, 0)+0.5-miny);
+    //  show.at<Vec3b>(ny, nx) = img1.at<Vec3b>(y, x);
+    //}
+    //Mat right(show, Rect(-minx, -miny, sz2.width, sz2.height));
+    //img2.copyTo(right);
+    //namedWindow("process", WINDOW_NORMAL);
+    //imshow("process", show);
+    //waitKey(0);
   }
 }

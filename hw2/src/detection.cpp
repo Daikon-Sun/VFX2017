@@ -166,151 +166,224 @@ void DETECTION::MSOP() {
   }
 }
 
-#define OCTAVE_LAYER            5       
-#define OCTAVE_NUM              3
-#define OCTAVE_SCALE            3
+#define OCTAVE_NUM              1
+#define OCTAVE_SCALE_NUM        3
+#define SIGMA                   pow(2, 1.0/(double)OCTAVE_SCALE_NUM)
+#define OCTAVE_LAYER            OCTAVE_SCALE_NUM+3
 #define GAUSSIAN_KERN           7
 #define PRE_SIGMA               1.6
-#define SIGMA                   pow(2, 1.0/(double)OCTAVE_SCALE)
-#define CONTRAST_THRES          0.3
+#define CONTRAST_THRES          0.03
 #define CURVATURE_THRES_R       10.0
-#define CURVATURE_THRESHOLD     pow(CURVATURE_THRES_R+1, 2)/CURVATURE_THRES_R
+#define CURVATURE_THRES         pow(CURVATURE_THRES_R+1, 2)/CURVATURE_THRES_R
+#define ORIENT_WINDOW           17
+#define HALF_LENGTH             (ORIENT_WINDOW-1)/2
+
 inline bool is_extrema(const vector<vector<Mat>>&, int, int, int, int);
 
 void DETECTION::SIFT() {
+  assert(ORIENT_WINDOW%2 == 0);
+  namedWindow("process", WINDOW_NORMAL);
+
   vector<Mat> L;
   for(const auto& img : imgs) L.push_back(img.clone());
 
-  #ifdef SHOW_PROCESS
-  namedWindow("process", WINDOW_AUTOSIZE);
-  #endif
-
   for(int i=0, n=L.size(); i<n; ++i) {
+    vector<SIFTpoint> siftpoints;
     // preprocessing images
     cvtColor(L[i], L[i], CV_BGR2GRAY);
-    L[i].convertTo(L[i], CV_32FC1);
+    L[i].convertTo(L[i], CV_64FC1);
     L[i] *= 1./255;
-
     /**************************************/
     /** detection of scale-space extrema **/
     /**************************************/
-    vector<vector<Mat>> g_octaves(OCTAVE_NUM);  // Gaussian octaves
-    vector<vector<Mat>> d_octaves(OCTAVE_NUM);  // DoG octaves
+    vector< vector<Mat> > g_octaves(OCTAVE_NUM);  // Gaussian octaves
+    vector< vector<Mat> > d_octaves(OCTAVE_NUM);  // DoG octaves
     for (int t=0; t<OCTAVE_NUM; ++t) {
       g_octaves[t].resize(OCTAVE_LAYER);
       d_octaves[t].resize(OCTAVE_LAYER-1);
-      resize(L[i], g_octaves[t][0], Size(), 2*pow(0.5,t), 2*pow(0.5,t));
+      if(t == 0) g_octaves[t][0] = L[i].clone();
+      else g_octaves[t][0] = g_octaves[t-1][OCTAVE_SCALE_NUM];
       // compute Gaussian octaves
-      for (int l=0; l<OCTAVE_LAYER; ++l) {
-        double sigma = PRE_SIGMA * pow(SIGMA, l) * pow(2, t);
+      for (int l=1; l<OCTAVE_LAYER; ++l) {
+        double sigma = PRE_SIGMA * pow(SIGMA, l-1);
         GaussianBlur(
           g_octaves[t][0],
           g_octaves[t][l],
-          Size((int)(sigma*4)*2+1, (int)(sigma*4)*2+1),
-          sigma
+          Size(),
+          sigma, sigma
         );
       }
       // comput DoG octaves
       for (int l=0; l<OCTAVE_LAYER-1; ++l)
         d_octaves[t][l] = g_octaves[t][l+1] - g_octaves[t][l];
     }
-
     /**************************************/
     /**  accurate keypoint localization  **/
     /**************************************/
-    int lim = (int)(1+(1+2*GAUSSIAN_KERN*SIGMA)/5);
+    //int lim = (int)(1+(1+2*GAUSSIAN_KERN*SIGMA)/5);
+    const int lim = HALF_LENGTH+1;
     for (int t=0; t<OCTAVE_NUM; ++t)
       for (int l=1, l_max=OCTAVE_LAYER-2; l<l_max; ++l) {
-
+        //#define SHOW_PROCESS
         #ifdef SHOW_PROCESS
         Mat marked_img = g_octaves[t][l];
-        marked_img.convertTo(marked_img, CV_64FC1);
+        marked_img.convertTo(marked_img, CV_32FC1);
         cvtColor(marked_img, marked_img, CV_GRAY2BGR);
+        marked_img.convertTo(marked_img, CV_64FC1);
         #endif
         
         for (int c=lim, c_max=d_octaves[t][l].cols-lim; c<c_max; ++c)
           for (int r=lim, r_max=d_octaves[t][l].rows-lim; r<r_max; ++r) {
             if (!is_extrema(d_octaves, t, l, r, c)) continue;
-            double value = d_octaves[t][l].at<double>(r, c);
-            cerr << "val1 " << value << endl;
-            // thow out low contrast
-            double Dx = (
-              d_octaves[t][l].at<double>(r, c+1) - 
-              d_octaves[t][l].at<double>(r, c-1)
-            ) / 2;
-            double Dy = (
-              d_octaves[t][l].at<double>(r+1, c) - 
-              d_octaves[t][l].at<double>(r-1, c)
-            ) / 2;
-            double Ds = (
-              d_octaves[t][l+1].at<double>(r, c) - 
-              d_octaves[t][l-1].at<double>(r, c)
-            ) / 2;
-            double Dxx = (
-              d_octaves[t][l].at<double>(r, c-1) + 
-              d_octaves[t][l].at<double>(r, c+1) -
-              d_octaves[t][l].at<double>(r, c  ) * 2
-            );
-            double Dyy = (
-              d_octaves[t][l].at<double>(r-1, c) + 
-              d_octaves[t][l].at<double>(r+1, c) -
-              d_octaves[t][l].at<double>(r  , c) * 2
-            );
-            double Dss = (
-              d_octaves[t][l-1].at<double>(r, c) + 
-              d_octaves[t][l+1].at<double>(r, c) -
-              d_octaves[t][l  ].at<double>(r, c) * 2
-            );
-            double Dxy = (
-              d_octaves[t][l].at<double>(r-1, c-1) +
-              d_octaves[t][l].at<double>(r+1, c+1) -
-              d_octaves[t][l].at<double>(r-1, c+1) -
-              d_octaves[t][l].at<double>(r+1, c-1)
-            ) / 4;
-            double Dxs = (
-              d_octaves[t][l-1].at<double>(r, c-1) +
-              d_octaves[t][l+1].at<double>(r, c+1) -
-              d_octaves[t][l+1].at<double>(r, c-1) -
-              d_octaves[t][l-1].at<double>(r, c+1)
-            ) / 4;
-            double Dys = (
-              d_octaves[t][l-1].at<double>(r-1, c) +
-              d_octaves[t][l+1].at<double>(r+1, c) -
-              d_octaves[t][l+1].at<double>(r-1, c) -
-              d_octaves[t][l-1].at<double>(r+1, c)
-            ) / 4;
-            Mat H = (Mat_<double>(3,3) << 
-              Dxx, Dxy, Dxs, 
-              Dxy, Dyy, Dys,
-              Dxs, Dys, Dss
-            );
-            Mat parD = (Mat_<double>(3,1) << Dx, Dy, Ds);
-            Mat x = (Mat_<double>(3,1) << c, r, SIGMA);
-            Mat h = (-1) * H.inv() * parD;
-            value = value + 0.5 * parD.dot(h);
-            // if (value < 7) continue;
-            cerr << "val2 " << value << endl;
-            // eliminate edge responses; H: Hessian
-            double TrH = Dxx + Dyy;
-            double DetH = Dxx * Dyy - pow(Dxy, 2);
-            /*if (DetH == 0) continue;
-            if (TrH*TrH/DetH > CURVATURE_THRESHOLD) {
-              cerr << "eliminate edge" << endl;
-              continue;
-            }*/
-
-            #ifdef SHOW_PROCESS
-            drawMarker(marked_img, Point(c, r),
-                       Scalar(0, 0, 255), MARKER_CROSS, 10, 1);
-            #endif
+            bool found = false;
+            int ll = l, cc = c, rr = r;
+            while(!found) {
+              double value = d_octaves[t][ll].at<double>(rr, cc);
+              double Dx = (
+                d_octaves[t][ll].at<double>(rr, cc+1) - 
+                d_octaves[t][ll].at<double>(rr, cc-1)
+              ) / 2;
+              double Dy = (
+                d_octaves[t][ll].at<double>(rr+1, cc) - 
+                d_octaves[t][ll].at<double>(rr-1, cc)
+              ) / 2;
+              double Ds = (
+                d_octaves[t][ll+1].at<double>(rr, cc) - 
+                d_octaves[t][ll-1].at<double>(rr, cc)
+              ) / 2;
+              double Dxx = (
+                d_octaves[t][ll].at<double>(rr, cc-1) + 
+                d_octaves[t][ll].at<double>(rr, cc+1) -
+                d_octaves[t][ll].at<double>(rr, cc  ) * 2
+              );
+              double Dyy = (
+                d_octaves[t][ll].at<double>(rr-1, cc) + 
+                d_octaves[t][ll].at<double>(rr+1, cc) -
+                d_octaves[t][ll].at<double>(rr  , cc) * 2
+              );
+              double Dss = (
+                d_octaves[t][ll-1].at<double>(rr, cc) + 
+                d_octaves[t][ll+1].at<double>(rr, cc) -
+                d_octaves[t][ll  ].at<double>(rr, cc) * 2
+              );
+              double Dxy = (
+                d_octaves[t][ll].at<double>(rr-1, cc-1) +
+                d_octaves[t][ll].at<double>(rr+1, cc+1) -
+                d_octaves[t][ll].at<double>(rr-1, cc+1) -
+                d_octaves[t][ll].at<double>(rr+1, cc-1)
+              ) / 4;
+              double Dxs = (
+                d_octaves[t][ll-1].at<double>(rr, cc-1) +
+                d_octaves[t][ll+1].at<double>(rr, cc+1) -
+                d_octaves[t][ll+1].at<double>(rr, cc-1) -
+                d_octaves[t][ll-1].at<double>(rr, cc+1)
+              ) / 4;
+              double Dys = (
+                d_octaves[t][ll-1].at<double>(r-1, c) +
+                d_octaves[t][ll+1].at<double>(r+1, c) -
+                d_octaves[t][ll+1].at<double>(r-1, c) -
+                d_octaves[t][ll-1].at<double>(r+1, c)
+              ) / 4;
+              Mat H = (Mat_<double>(3,3) << 
+                Dxx, Dxy, Dxs, 
+                Dxy, Dyy, Dys,
+                Dxs, Dys, Dss
+              );
+              Mat parD = (Mat_<double>(3,1) << Dx, Dy, Ds);
+              Mat h = (-1) * H.inv() * parD;
+              found = true;
+              Point pmn, pmx;
+              double mn, mx;
+              minMaxLoc(h, &mn, &mx, &pmn, &pmx);
+              if(abs(mn) > 0.5 || abs(mx) > 0.5) {
+                if(abs(h.at<double>(0, 0)) > 0.5)
+                  cc += (h.at<double>(0, 0) < 0 ? -1 : 1);
+                if(abs(h.at<double>(1, 0)) > 0.5)    
+                  rr += (h.at<double>(0, 0) < 0 ? -1 : 1);
+                if(abs(h.at<double>(2, 0)) > 0.5)    
+                  ll += (h.at<double>(2, 0) < 0 ? -1 : 1);
+                int good = 0;
+                if(cc >= c_max) cc = c_max;
+                else if(cc < lim) cc = lim;
+                else ++good;
+                if(rr >= r_max) rr = r_max;
+                else if(rr < lim) rr = lim;
+                else ++good;
+                if(ll >= l_max) ll = l_max;
+                else if(ll < 1) ll = 1;
+                else ++good;
+                if(good != 3) {
+                  found = false;
+                  break;
+                }
+              }
+              if(!found) continue;
+              double new_value = value + 0.5 * parD.dot(h);
+              // thow out low contrast
+              if(abs(new_value) < CONTRAST_THRES) {
+                found = false;
+                break;
+              }
+              // eliminate edge responses; H: Hessian
+              double TrH = Dxx + Dyy;
+              double DetH = Dxx * Dyy - Dxy * Dxy;
+              if(TrH * TrH / DetH > CURVATURE_THRES) {
+                found = false;
+                break;
+              }
+            }
+            if(found) {
+              double sigma = PRE_SIGMA * pow(SIGMA, ll-1);
+              Rect roi = Rect(cc-HALF_LENGTH, rr-HALF_LENGTH,
+                              ORIENT_WINDOW, ORIENT_WINDOW);
+              Mat G_W = L[i](Rect(roi)).clone();
+              GaussianBlur(G_W, G_W, Size(), sigma*1.5, sigma*1.5);
+              // Gaussian kernel Weight
+              Mat MAG = Mat::zeros(ORIENT_WINDOW, ORIENT_WINDOW, CV_64FC1);
+              double orient[ORIENT_WINDOW][ORIENT_WINDOW];
+              for(int xx = cc-HALF_LENGTH; xx<cc+HALF_LENGTH; ++xx)
+                for(int yy = rr-HALF_LENGTH; yy<rr+HALF_LENGTH; ++rr) {
+                  double dx = g_octaves[t][ll].at<double>(yy, xx+1) -
+                              g_octaves[t][ll].at<double>(yy, xx-1);
+                  double dy = g_octaves[t][ll].at<double>(yy+1, xx) -
+                              g_octaves[t][ll].at<double>(yy-1, xx);
+                  MAG.at<double>(yy, xx) = sqrt(dx*dx + dy*dy);
+                  orient[yy][xx] = atan(dy / dx) * 180 / M_PI;
+                }
+              // weighted by Gaussian kernel
+              MAG = MAG.mul(G_W);
+              // orientation assignment with histogram
+              vector<int> bins(38);
+              for(int xx = cc-HALF_LENGTH; xx<cc+HALF_LENGTH; ++xx)
+                for(int yy = rr-HALF_LENGTH; yy<rr+HALF_LENGTH; ++rr)
+                  bins[int(orient[yy][xx]/10-1e-20)+1] += MAG.at<double>(yy, xx);
+              bins[0] = bins[36], bins[37] = bins[1];
+              int mx1i = max_element(bins.begin()+1, bins.end()-1)-bins.begin();
+              double better_mx1i = (bins[mx1i+1]-bins[mx1i-1]+bins[mx1i]) / 
+                                    2 / bins[mx1i] + mx1i - 1;
+              siftpoints.emplace_back(cc, rr, ll, better_mx1i*10+5);
+              double mx1 = bins[mx1i];
+              bins[mx1i] = 0;
+              // consider second largest peak
+              int mx2i = max_element(bins.begin(), bins.end()) - bins.begin();
+              double mx2 = bins[mx2i];
+              if(mx2 >= mx1*0.8) {
+                double better_mx2i = (bins[mx2i+1]-bins[mx2i-1]+bins[mx2i]) / 
+                                      2 / bins[mx2i] + mx2i - 1;
+                siftpoints.emplace_back(cc, rr, ll, better_mx2i*10+5);
+              }
+              #ifdef SHOW_PROCESS
+              drawMarker(marked_img, Point(cc, rr),
+                         Scalar(0, 0, 255), MARKER_CROSS, 10, 1);
+              #endif
+            }
           }
         #ifdef SHOW_PROCESS
         imshow("process", marked_img);
-        #endif
         waitKey(0);
+        #endif
       }
   }
-
     /**************************************/
     /**      orientation assignment      **/
     /**************************************/
@@ -319,10 +392,9 @@ void DETECTION::SIFT() {
     /**************************************/
     /**       keypoint descriptor        **/
     /**************************************/
-
+  //cerr << "here" << endl;
   exit(0);
 }
-
 // helper functions
 inline bool is_extrema(const vector<vector<Mat>>& img, int t, int l, int r, int c) {
   double value = img[t][l].at<double>(r, c);

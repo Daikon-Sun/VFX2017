@@ -21,6 +21,14 @@ struct Keypoint {
   Keypoint(double x, double y, int l, double t) : x(x), y(y), l(l), t(t) {}
 };
 
+struct SIFTpoint {
+  int x, y, l;
+  double t;
+  SIFTpoint() {};
+  SIFTpoint(int x, int y, int l, double t) : x(x), y(y), l(l), t(t) {};
+
+};
+
 bool check(const vector<double>&, const string&,
            const int&, const string&);
 

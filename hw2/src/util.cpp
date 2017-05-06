@@ -66,7 +66,9 @@ int parse(int ac, char** av) {
       ("stitching,s",
        value<int>(&stitching_method)->default_value(stitching_method),
        "Methods of image stitching:\n"
-       "  0: \tRANSAC\n")
+       "  0: \ttranslation\n"
+       "  1: \ttranslation + estimate focal length\n"
+       "  2: \ttranslation + rotation\n")
       ("stitching_para", 
        value< vector<float> >(&stitching_para)->multitoken(),
        "Parameters of the chosen image stitching method.\n")

@@ -33,7 +33,7 @@ PANORAMA::PANORAMA(const string& in_list, const string& out_jpg,
   string fname;
   while(ifs >> fname) {
     Mat tmp = imread(fname, IMREAD_COLOR);
-    //resize(tmp, tmp, Size(), 0.25, 0.25);
+    resize(tmp, tmp, Size(), 0.25, 0.25);
     _imgs.push_back(tmp.clone());
   }
 };
@@ -64,7 +64,9 @@ void PANORAMA::process() {
   execute<type3>(projections[_projection_method]);
   //image stitching
   typedef void(STITCHING::*type4)();
-  vector<type4> stitchings = {&STITCHING::translation};
+  vector<type4> stitchings = {&STITCHING::translation,
+                              &STITCHING::focal_length,
+                              &STITCHING::rotation};
   execute<type4>(stitchings[_stitching_method]);
 }
 void PANORAMA::visualize() {

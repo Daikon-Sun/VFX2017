@@ -21,6 +21,20 @@ bool STITCHING::is_inliner(size_t pic, float sx, float sy,
   } else _sx = kp1.x-kp2.x, _sy = kp1.y-kp2.y;
   return (sx-_sx) * (sx-_sx) + (sy-_sy) * (sy-_sy) < _para[1];
 }
+bool STITCHING::is_inliner(size_t pic, const Mat& sol,
+                           const pair<int, int>& kpid) {
+  int kpid1, kpid2; tie(kpid1, kpid2) = kpid;
+  const auto& kp1 = keypoints[pic][kpid1], kp2 = keypoints[pic+1][kpid2];
+  Mat pos1 = (Mat_<float>(3, 1) << kp1.x, kp1.y, 1);
+  pos1 = sol * pos1;
+  Mat pos2 = (Mat_<float>(2, 1) << kp2.x, kp2.x);
+  Mat err = pos1 - pos2;
+  return sum(err.mul(err))[0] < _para[1];
+}
+pair<float, float> STITCHING::cylindrical_projection(float f, float w, float h, 
+                                                     float x, float y) {
+  return {f*atanf((x-w/2)/f) + w/2, f*(y-h/2)/sqrtf(f*f+(x-w/2)*(x-w/2)) + h/2};
+}
 void STITCHING::translation() { 
   cerr << __func__;
   size_t pic_num = imgs.size();
@@ -28,29 +42,25 @@ void STITCHING::translation() {
   shift.resize(pic_num-1);
   #pragma omp parallel for
   for(size_t pic = 0; pic<match_pairs.size(); ++pic) {
-    int best_cnt = 0, best_pair, best_sx, best_sy;
+    int best_cnt = 0, best_sx, best_sy;
     const size_t sz = match_pairs[pic].size();
-    Size sz1 = imgs[pic].size(), sz2 = imgs[pic+1].size();
-    float w1 = sz1.width/2.0, w2 = sz2.width/2.0;
-    float h1 = sz1.height/2.0, h2 = sz2.height/2.0;
     for(int i = 0; i<int(_para[0]); ++i) {
       size_t id1 = rand()%sz;
-      int kpid11, kpid21; tie(kpid11, kpid21) = match_pairs[pic][id1];
-      const auto& kp11 = keypoints[pic][kpid11], kp21 = keypoints[pic+1][kpid21];
-      float sx = kp11.x-kp21.x, sy = kp11.y-kp21.y;
+      int kpid1, kpid2; tie(kpid1, kpid2) = match_pairs[pic][id1];
+      const auto& kp1 = keypoints[pic][kpid1], kp2 = keypoints[pic+1][kpid2];
+      float sx = kp1.x-kp2.x, sy = kp1.y-kp2.y;
       int in_cnt = 0;
       for(size_t id3 = 0; id3<match_pairs[pic].size(); ++id3) if(id3 != id1)
         in_cnt += is_inliner(pic, sx, sy, match_pairs[pic][id3]);
       if(in_cnt > best_cnt) {
         best_cnt = in_cnt;
-        best_pair = id1;
         best_sx = sx;
         best_sy = sy;
       }
     }
     shift[pic] = {best_sx, best_sy};
-    sz1 = imgs[pic].size();
-    sz2 = imgs[pic+1].size();
+    Size sz1 = imgs[pic].size();
+    Size sz2 = imgs[pic+1].size();
     const Mat& img0 = imgs[pic];
     const Mat& img1 = imgs[pic+1];
     Mat show = Mat::zeros(sz1.height+abs(best_sy), sz2.width+abs(best_sx), 
@@ -64,10 +74,6 @@ void STITCHING::translation() {
     waitKey(0);
   }
 }
-pair<float, float> STITCHING::cylindrical_projection(float f, float w, float h, 
-                                                     float x, float y) {
-  return {f*atanf((x-w/2)/f) + w/2, f*(y-h/2)/sqrtf(f*f+(x-w/2)*(x-w/2)) + h/2};
-}
 void STITCHING::focal_length() {
   cerr << __func__;
   size_t pic_num = imgs.size();
@@ -75,7 +81,7 @@ void STITCHING::focal_length() {
   shift.resize(pic_num-1);
   #pragma omp parallel for
   for(size_t pic = 0; pic<match_pairs.size(); ++pic) {
-    int best_cnt1 = 0, best_cnt2 = 0, best_pair, best_sx, best_sy;
+    int best_cnt1 = 0, best_cnt2 = 0, best_sx, best_sy;
     const size_t sz = match_pairs[pic].size();
     Size sz1 = imgs[pic].size(), sz2 = imgs[pic+1].size();
     float best_f = 0;
@@ -117,12 +123,77 @@ void STITCHING::focal_length() {
       if(in_cnt1 > best_cnt1 || (in_cnt1 == best_cnt1 && in_cnt2 < best_cnt2)) {
         best_cnt1 = in_cnt1;
         best_cnt2 = in_cnt2;
-        best_pair = id1;
         best_sx = sx;
         best_sy = sy;
         best_f = f;
       }
     }
     shift[pic] = {best_sx, best_sy};
+  }
+}
+void STITCHING::rotation() {
+  cerr << __func__;
+  size_t pic_num = imgs.size();
+  shift.clear();
+  shift.resize(pic_num-1);
+  #pragma omp parallel for
+  for(size_t pic = 0; pic<match_pairs.size(); ++pic) {
+    Mat best_sol;
+    int best_cnt = 0;
+    const size_t sz = match_pairs[pic].size();
+    for(int i = 0; i<int(_para[0]); ++i) {
+      size_t id1 = rand()%sz;
+      size_t id2 = (id1+(rand()%(sz-1))+1)%sz;
+      size_t id3 = rand()%sz;
+      while(id3 == id1 || id3 == id2) id3 = rand()%sz;
+      int kpid11, kpid12; tie(kpid11, kpid12) = match_pairs[pic][id1];
+      int kpid21, kpid22; tie(kpid21, kpid22) = match_pairs[pic][id2];
+      int kpid31, kpid32; tie(kpid31, kpid32) = match_pairs[pic][id3];
+      const auto& kp11 = keypoints[pic][kpid11];
+      const auto& kp21 = keypoints[pic][kpid21];
+      const auto& kp31 = keypoints[pic][kpid31];
+      const auto& kp12 = keypoints[pic+1][kpid12];
+      const auto& kp22 = keypoints[pic+1][kpid22];
+      const auto& kp32 = keypoints[pic+1][kpid32];
+      Mat rot = (Mat_<float>(3, 3) << kp11.x, kp21.x, kp31.x,
+                                      kp11.y, kp21.y, kp31.y,
+                                         1.0,    1.0,    1.0);
+      Mat pos = (Mat_<float>(2, 3) << kp12.x, kp22.x, kp32.x,
+                                      kp12.y, kp22.y, kp32.y);
+      Mat sol = pos * rot.inv();
+      int in_cnt = 0;
+      for(size_t id3 = 0; id3<match_pairs[pic].size(); ++id3) if(id3 != id1)
+        in_cnt += is_inliner(pic, sol, match_pairs[pic][id3]);
+      if(in_cnt > best_cnt) {
+        best_cnt = in_cnt;
+        sol.copyTo(best_sol);
+      }
+    }
+    Size sz1 = imgs[pic].size();
+    Size sz2 = imgs[pic+1].size();
+    float minx = 0, miny = 0, maxx = sz2.width, maxy = sz2.height;
+    for(int x = 0; x<sz1.width; ++x) for(int y = 0; y<sz1.height; ++y) {
+      Mat pos = (Mat_<float>(3, 1) << x, y, 1);
+      pos = best_sol * pos;
+      minx = min(minx, pos.at<float>(0, 0));
+      maxx = max(maxx, pos.at<float>(0, 0));
+      miny = min(miny, pos.at<float>(1, 0));
+      maxy = max(maxy, pos.at<float>(1, 0));
+    }
+    const Mat& img1 = imgs[pic];
+    const Mat& img2 = imgs[pic+1];
+    Mat show = Mat::zeros(int(maxy-miny)+1, int(maxx-minx)+1, CV_8UC3);
+    Mat right(show, Rect(-minx, -miny, sz2.width, sz2.height));
+    img2.copyTo(right);
+    for(int x = 0; x<sz1.width; ++x) for(int y = 0; y<sz1.height; ++y) {
+      Mat pos = (Mat_<float>(3, 1) << x, y, 1);
+      pos = best_sol * pos;
+      int nx = int(pos.at<float>(0, 0)+0.5-minx);
+      int ny = int(pos.at<float>(1, 0)+0.5-miny);
+      show.at<Vec3b>(ny, nx) = img1.at<Vec3b>(y, x);
+    }
+    namedWindow("process", WINDOW_NORMAL);
+    imshow("process", show);
+    waitKey(0);
   }
 }

@@ -14,7 +14,7 @@ vector<string> all_detection = {"MSOP"};
 vector<string> all_matching = {"exhaustive search", 
                                "HAAR wavelet-based hashing"};
 vector<string> all_projection = {"none", "cylindrical"};
-vector<string> all_stitching = {"translation", "focal-length"};
+vector<string> all_stitching = {"translation", "focal-length", "rotation"};
 
 int detection_method = 0;
 
@@ -27,8 +27,8 @@ Paras all_projection_para = {{}, {10000}};
 vector<int> projection_cnt = {0, 1};
 
 int stitching_method = 0;
-Paras all_stitching_para = {{4000, 25}, {4000, 25}};
-vector<int> stitching_cnt = {2, 2};
+Paras all_stitching_para = {{5000, 25}, {5000, 25}, {5000, 25}};
+vector<int> stitching_cnt = {2, 2, 2};
 
 string in_list = "input_images.txt";
 string out_jpg = "result/out.jpg";

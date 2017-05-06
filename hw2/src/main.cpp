@@ -23,7 +23,7 @@ Paras all_matching_para = {{}, {10, 0.65, 50}};
 vector<int> matching_cnt = {0, 3};
 
 int projection_method = 1;
-Paras all_projection_para = {{}, {3500}};
+Paras all_projection_para = {{}, {10000}};
 vector<int> projection_cnt = {0, 1};
 
 int stitching_method = 0;

@@ -96,7 +96,7 @@ void MATCHING::HAAR() {
                                      get<1>(x1) == get<1>(x2); });
     for(auto it = pre_match[pic].begin(); it != pre_match[pic].end();)
       if(get<2>(*it) < THRESHOLD*sec_mn &&
-         check_match(keypoints, *it, pic, sec_mn)) ++it;
+         check_match_haar(*it, pic, sec_mn)) ++it;
       else it = pre_match[pic].erase(it);
   }
 
@@ -114,8 +114,31 @@ bool MATCHING::in_mid(const int& x) { return x >= 0 && x < int(_para[0])-1; };
 bool MATCHING::is_align(const Keypoint& k1, const Keypoint& k2) {
   return abs(k1.y - k2.y) < _para[2];
 }
-bool MATCHING::check_match(const vector< vector<Keypoint> >& keypoints,
-                           const tuple<int, int, float>& mp, 
+void MATCHING::exhaustive() {
+  cerr << __func__;
+  size_t pic_num = keypoints.size();
+  match_pairs.clear();
+  match_pairs.resize(pic_num-1);
+  for(size_t pic = 0; pic<pic_num-1; ++pic) {
+    for(size_t i = 0; i<keypoints[pic].size(); ++i) {
+      const auto& ki = keypoints[pic][i];
+      float min_err = FLT_MAX;
+      int bestj = -1;
+      for(size_t j = 0; j<keypoints[pic+1].size(); ++j) {
+        const auto& kj = keypoints[pic+1][j];
+        Mat diff = ki.patch - kj.patch;
+        float err = sum(diff.mul(diff))[0];
+        if(err < min_err) {
+          min_err = err;
+          bestj = j;
+        }
+      }
+      if(bestj != -1 && check_match_exhaustive(i, bestj, pic))
+        match_pairs[pic].emplace_back(i, bestj);
+    }
+  }
+}
+bool MATCHING::check_match_haar(const tuple<int, int, float>& mp, 
                            size_t pic, float sec_mn) const {
   const int& pj = get<1>(mp);
   const auto& kj = keypoints[pic+1][pj];
@@ -131,13 +154,18 @@ bool MATCHING::check_match(const vector< vector<Keypoint> >& keypoints,
   }
   return fir_i == get<0>(mp) && fir < sec_mn * _para[1];
 }
-void MATCHING::exhaustive() {
-  size_t pic_num = keypoints.size();
-  match_pairs.clear();
-  match_pairs.resize(pic_num-1);
-  for(size_t pic = 0; pic<pic_num-1; ++pic) {
-    for(const auto& k : keypoints[pic]) {
-      
+bool MATCHING::check_match_exhaustive(int target_i, int j, size_t pic) {
+  const auto& kj = keypoints[pic+1][j];
+  float min_err = FLT_MAX;
+  int best_i = -1;
+  for(size_t i = 0; i<keypoints[pic].size(); ++i) {
+    const auto& ki = keypoints[pic][i];
+    Mat diff = kj.patch - ki.patch;
+    float err = sum(diff.mul(diff))[0];
+    if(err < min_err) {
+      min_err = err;
+      best_i = i;
     }
   }
+  return best_i != -1 && target_i == best_i;
 }

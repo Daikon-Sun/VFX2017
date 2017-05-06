@@ -24,8 +24,8 @@ public:
 private:
   bool in_mid(const int&);
   bool is_align(const Keypoint&, const Keypoint&);
-  bool check_match(const vector< vector<Keypoint> >&, 
-                   const tuple<int, int, float>&, size_t, float) const;
+  bool check_match_haar(const tuple<int, int, float>&, size_t, float) const;
+  bool check_match_exhaustive(int, int, size_t);
   vector<float> _para;
   vector< vector<Keypoint> >& keypoints;
   vector< vector< pair<int, int> > >& match_pairs;

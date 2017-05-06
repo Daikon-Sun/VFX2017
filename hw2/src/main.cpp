@@ -19,7 +19,7 @@ vector<string> all_stitching = {"translation", "focal-length", "rotation"};
 int detection_method = 0;
 
 int matching_method = 1;
-Paras all_matching_para = {{}, {10, 0.65, 50}};
+Paras all_matching_para = {{200}, {10, 0.65, 200}};
 vector<int> matching_cnt = {0, 3};
 
 int projection_method = 1;

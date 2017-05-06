@@ -9,7 +9,7 @@ public:
   void exhaustive();
 private:
   bool in_mid(const int&);
-  bool is_align(const Keypoint&, const Keypoint&);
+  bool is_align(const Keypoint&, const Keypoint&, const double&);
   bool check_match_haar(const tuple<int, int, double>&, size_t, double) const;
   bool check_match_exhaustive(int, int, size_t);
   vector<double> _para;

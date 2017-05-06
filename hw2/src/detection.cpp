@@ -242,9 +242,11 @@ void DETECTION::SIFT() {
         cvtColor(marked_img, marked_img, CV_GRAY2BGR);
         marked_img.convertTo(marked_img, CV_64FC1);
         #endif
-        
-        for (int c=lim, c_max=d_octaves[t][l].cols-lim; c<c_max; ++c)
-          for (int r=lim, r_max=d_octaves[t][l].rows-lim; r<r_max; ++r) {
+        const int c_max = d_octaves[t][l].cols-lim;
+        const int r_max = d_octaves[t][l].rows-lim;
+        #pragma omp parallel for collapse(2)
+        for (int c=lim; c<c_max; ++c)
+          for (int r=lim; r<r_max; ++r) {
             if (!is_extrema(d_octaves, t, l, r, c)) continue;
             bool found = false;
             int ll = l, cc = c, rr = r;
@@ -290,10 +292,10 @@ void DETECTION::SIFT() {
                 d_octaves[t][ll-1].at<double>(rr, cc+1)
               ) / 4;
               double Dys = (
-                d_octaves[t][ll-1].at<double>(r-1, c) +
-                d_octaves[t][ll+1].at<double>(r+1, c) -
-                d_octaves[t][ll+1].at<double>(r-1, c) -
-                d_octaves[t][ll-1].at<double>(r+1, c)
+                d_octaves[t][ll-1].at<double>(rr-1, cc) +
+                d_octaves[t][ll+1].at<double>(rr+1, cc) -
+                d_octaves[t][ll+1].at<double>(rr-1, cc) -
+                d_octaves[t][ll-1].at<double>(rr+1, cc)
               ) / 4;
               Mat H = (Mat_<double>(3,3) << 
                 Dxx, Dxy, Dxs, 
@@ -437,6 +439,7 @@ void DETECTION::SIFT() {
                 += MAG.at<double>(ny, nx);
             }
     }
+    cerr << keypoints[i].size() << endl;
   }
 }
 // helper functions

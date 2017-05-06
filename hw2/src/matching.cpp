@@ -77,7 +77,7 @@ void MATCHING::HAAR() {
               else if(err < sec) sec = err;
             }
             if(fir_j != -1 && sec != FLT_MAX && 
-               is_align(ki, keypoints[pic+1][fir_j])) {
+               is_align(ki, keypoints[pic+1][fir_j], _para[2])) {
               pre_match[pic].emplace_back(pi, fir_j, fir);
               all_sec.push_back(sec);
             }
@@ -107,8 +107,9 @@ void MATCHING::HAAR() {
   }
 }
 bool MATCHING::in_mid(const int& x) { return x >= 0 && x < int(_para[0])-1; };
-bool MATCHING::is_align(const Keypoint& k1, const Keypoint& k2) {
-  return abs(k1.y - k2.y) < _para[2];
+bool MATCHING::is_align(const Keypoint& k1, const Keypoint& k2, 
+                        const double& th) {
+  return abs(k1.y - k2.y) < th;
 }
 void MATCHING::exhaustive() {
   cerr << __func__;
@@ -130,6 +131,7 @@ void MATCHING::exhaustive() {
         }
       }
       if(bestj != -1 && check_match_exhaustive(i, bestj, pic))
+         //is_align(ki, keypoints[pic+1][bestj], _para[0]))
         match_pairs[pic].emplace_back(i, bestj);
     }
     const auto red = Scalar(0, 0, 255);

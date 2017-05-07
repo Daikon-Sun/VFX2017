@@ -169,7 +169,7 @@ void DETECTION::MSOP() {
   }
 }
 
-constexpr int OCTAVE_NUM           = 3;
+constexpr int OCTAVE_NUM           = 5;
 constexpr int OCTAVE_SCALE_NUM     = 3;
 constexpr double SIGMA             = pow(2, 1.0/(double)OCTAVE_SCALE_NUM);
 constexpr int OCTAVE_LAYER         = OCTAVE_SCALE_NUM+3;
@@ -232,13 +232,6 @@ void DETECTION::SIFT() {
     #pragma omp parallel for collapse(2)
     for (int t=0; t<OCTAVE_NUM; ++t)
       for (int l=1; l<OCTAVE_LAYER-2; ++l) {
-        //#define SHOW_PROCESS
-        #ifdef SHOW_PROCESS
-        Mat marked_img = g_octaves[t][l];
-        marked_img.convertTo(marked_img, CV_32FC1);
-        cvtColor(marked_img, marked_img, CV_GRAY2BGR);
-        marked_img.convertTo(marked_img, CV_64FC1);
-        #endif
         const int c_max = d_octaves[t][l].cols-lim;
         const int r_max = d_octaves[t][l].rows-lim;
         #pragma omp parallel for collapse(2)
@@ -323,7 +316,7 @@ void DETECTION::SIFT() {
               if(!found) continue;
               double new_value = value + 0.5 * parD.dot(h);
               // thow out low contrast
-              if(abs(new_value) <= CONTRAST_THRES) {
+              if(abs(new_value) < CONTRAST_THRES) {
                 found = false;
                 break;
               }
@@ -379,16 +372,8 @@ void DETECTION::SIFT() {
                   siftpoints.emplace_back(cc, rr, ll, better_mx2i*10+5, t);
                 }
               }
-              #ifdef SHOW_PROCESS
-              drawMarker(marked_img, Point(cc, rr),
-                         Scalar(0, 0, 255), MARKER_CROSS, 10, 1);
-              #endif
             }
           }
-        #ifdef SHOW_PROCESS
-        imshow("process", marked_img);
-        waitKey(0);
-        #endif
       }
     /**************************************/
     /**       keypoint descriptor        **/

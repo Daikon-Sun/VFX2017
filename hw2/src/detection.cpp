@@ -13,7 +13,7 @@ using namespace std;
 
 #include "detection.hpp"
 
-constexpr int MAX_LAYER           = 1;
+constexpr int MAX_LAYER            = 1;
 constexpr double G_KERN            = 0;
 constexpr double SIGMA_P           = 1.0;  // pyramid smoothing
 constexpr double SIGMA_I           = 1.5;  // integration scale
@@ -21,12 +21,9 @@ constexpr double SIGMA_D           = 1.0;  // derivative scale
 constexpr double SIGMA_O           = 4.5;  // orientation scale
 constexpr double HM_THRESHOLD      = 0.0005;
 constexpr double ANMS_ROBUST_RATIO = 0.9;
-constexpr int KEYPOINT_NUM        = 500;
+constexpr int KEYPOINT_NUM         = 500;
 constexpr double SAMPLE_SPACING    = 5;
 
-bool is_greater_r(PreKeypoint i, PreKeypoint j) { 
-  return (i.minR2 > j.minR2); 
-}
 void DETECTION::MSOP() {
   cerr << __func__;
   keypoints.clear();
@@ -94,7 +91,10 @@ void DETECTION::MSOP() {
             if (newR2 < pre_kpts[j].minR2) pre_kpts[j].minR2 = newR2;
           }
         } 
-      sort(pre_kpts.begin(), pre_kpts.end(), is_greater_r);
+      sort(pre_kpts.begin(), pre_kpts.end(),
+           [](const PreKeypoint& i, const PreKeypoint& j){
+             return i.minR2 > j.minR2;
+           });
       if (pre_kpts.size() > KEYPOINT_NUM)
         pre_kpts.resize(KEYPOINT_NUM);
 
@@ -227,7 +227,6 @@ void DETECTION::SIFT() {
     /**************************************/
     /**  accurate keypoint localization  **/
     /**************************************/
-    //int lim = (int)(1+(1+2*GAUSSIAN_KERN*SIGMA)/5);
     const int lim = HALF_ORIENT+1;
     #pragma omp parallel for collapse(2)
     for (int t=0; t<OCTAVE_NUM; ++t)
@@ -420,7 +419,7 @@ void DETECTION::SIFT() {
 }
 bool DETECTION::is_extrema(const vector<vector<Mat>>& img,
                            int t, int l, int r, int c) {
-  double value = img[t][l].at<double>(r, c);
+  const double& value = img[t][l].at<double>(r, c);
   return ((
     value <= img[t][l].at<double>(r+1, c+1) &&
     value <= img[t][l].at<double>(r+1, c  ) &&

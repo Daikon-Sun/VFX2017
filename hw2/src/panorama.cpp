@@ -94,8 +94,8 @@ void PANORAMA::visualize() {
       line(show, Point(kp0.x, kp0.y), 
            Point(sz[0].width+kp1.x, kp1.y), red, 2, 8);
     }
-    namedWindow("process", WINDOW_NORMAL);
-    imshow("process", show);
+    namedWindow("visualize", WINDOW_NORMAL);
+    imshow("visualize", show);
     waitKey(0);
   }
 }

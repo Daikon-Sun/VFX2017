@@ -31,8 +31,9 @@ bool STITCHING::is_inliner(size_t pic, const Mat& sol,
   Mat err = pos1 - pos2;
   return sum(err.mul(err))[0] < _para[1];
 }
-pair<double, double> STITCHING::cylindrical_projection(double f, double w, double h, 
-                                                     double x, double y) {
+pair<double, double>
+STITCHING::cylindrical_projection(double f, double w, double h, 
+                                  double x, double y) {
   return {f*atan((x-w/2)/f) + w/2, f*(y-h/2)/sqrt(f*f+(x-w/2)*(x-w/2)) + h/2};
 }
 void STITCHING::translation() { 
@@ -40,7 +41,7 @@ void STITCHING::translation() {
   size_t pic_num = imgs.size();
   shift.clear();
   shift.resize(pic_num-1);
-  #pragma omp parallel for
+  //#pragma omp parallel for
   for(size_t pic = 0; pic<match_pairs.size(); ++pic) {
     int best_cnt = 0, best_sx, best_sy;
     const size_t sz = match_pairs[pic].size();
@@ -54,11 +55,13 @@ void STITCHING::translation() {
         in_cnt += is_inliner(pic, sx, sy, match_pairs[pic][id3]);
       if(in_cnt > best_cnt) {
         best_cnt = in_cnt;
+        cerr << best_cnt << endl;
         best_sx = sx;
         best_sy = sy;
       }
     }
     shift[pic] = {best_sx, best_sy};
+    cerr << best_sy << " " << best_sy << endl;
     Size sz1 = imgs[pic].size();
     Size sz2 = imgs[pic+1].size();
     const Mat& img0 = imgs[pic];
@@ -69,8 +72,8 @@ void STITCHING::translation() {
     Mat right(show, Rect(best_sx, max(0, best_sy), sz2.width, sz2.height));
     img0.copyTo(left);
     img1.copyTo(right);
-    namedWindow("process", WINDOW_NORMAL);
-    imshow("process", show);
+    namedWindow("translation", WINDOW_NORMAL);
+    imshow("translation", show);
     waitKey(0);
   }
 }
@@ -197,8 +200,8 @@ void STITCHING::rotation() {
     }
     Mat right(show, Rect(-minx, -miny, sz2.width, sz2.height));
     img2.copyTo(right);
-    namedWindow("process", WINDOW_NORMAL);
-    imshow("process", show);
+    namedWindow("rotation", WINDOW_NORMAL);
+    imshow("rotation", show);
     waitKey(0);
   }
 }

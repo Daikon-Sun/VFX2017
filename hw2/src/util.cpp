@@ -12,11 +12,11 @@ using namespace std;
 typedef vector<double> Para;
 typedef vector<Para> Paras;
 
-extern vector<string> all_detection, all_matching, all_projection;
+extern vector<string> all_panorama, all_detection, all_matching, all_projection;
 extern vector<string> all_stitching;
 extern Paras all_matching_para, all_projection_para, all_stitching_para;
-extern int detection_method, matching_method, projection_method;
-extern int stitching_method;
+extern int panorama_mode;
+extern int detection_mode, matching_mode, projection_mode, stitching_mode;
 extern vector<int> matching_cnt, projection_cnt, stitching_cnt;
 extern string in_list, out_jpg;
 extern bool verbose;
@@ -25,7 +25,7 @@ bool check(const vector<double>& para, const string& name,
            const int& cnt, const string& info) {
   if((int)para.size() != cnt) {
     cout << info << " arguments: " << name << " should have " << cnt
-         << " argument" << (cnt?"s!":"!") << endl;
+         << " argument" << (cnt>1?"s!":"!") << endl;
     return false;
   }
   return true;
@@ -34,48 +34,52 @@ int parse(int ac, char** av) {
   Para matching_para, projection_para, stitching_para;
 	options_description desc("All Available Options in VFX2017 hw2 project");
 	desc.add_options()
-			("help,h", "Print help message.\n")
+			("help,h", "Print help message.")
       ("in_list,i", value<string>(&in_list)->default_value(in_list),
-       "List of all input images.\n")
+       "List of all input images.")
       ("out_jpg,o", value<string>(&out_jpg)->default_value(out_jpg),
-       "Output filename of the panorama image.\n")
-
+       "Output filename of the panorama image.")
+      ("verbose,v", value<bool>()
+       ->implicit_value(verbose, verbose?"True":"False")->composing(),
+       "Show the final result.")
+      ("panorama,p",
+       value<int>(&panorama_mode)->default_value(panorama_mode),
+       "modes of generating panorama:\n"
+       "  0: \tO(n)\n"
+       "  1: \tO(n^2)")
       ("detection,d",
-       value<int>(&detection_method)->default_value(detection_method),
-       "Methods of feature detection:\n"
+       value<int>(&detection_mode)->default_value(detection_mode),
+       "modes of feature detection:\n"
        "  0: \tMSOP\n"
-       "  1: \tSIFT\n")
+       "  1: \tSIFT\n\n")
 
       ("matching,m",
-       value<int>(&matching_method)->default_value(matching_method),
-       "Methods of feature matching:\n"
+       value<int>(&matching_mode)->default_value(matching_mode),
+       "modes of feature matching:\n"
        "  0: \texhaustive search\n"
-       "  1: \tHAAR wavelet-based hashing\n")
+       "  1: \tHAAR wavelet-based hashing")
       ("matching_para",
        value< vector<double> >(&matching_para)->multitoken(),
-       "Parameters of the chosen feature matching method.\n")
+       "Parameters of the chosen feature matching mode.\n\n")
       
-      ("projection,p",
-       value<int>(&projection_method)->default_value(projection_method),
+      ("projection,j",
+       value<int>(&projection_mode)->default_value(projection_mode),
        "Types of projection:\n"
        "  0: \tnone\n"
        "  1: \tcylindrical")
       ("projection_para",
        value< vector<double> >(&projection_para)->multitoken(),
-       "Parameters of the chosen projection type.\n")
+       "Parameters of the chosen projection type.\n\n")
 
       ("stitching,s",
-       value<int>(&stitching_method)->default_value(stitching_method),
-       "Methods of image stitching:\n"
+       value<int>(&stitching_mode)->default_value(stitching_mode),
+       "modes of image stitching:\n"
        "  0: \ttranslation\n"
        "  1: \ttranslation + estimate focal length\n"
-       "  2: \ttranslation + rotation\n")
+       "  2: \ttranslation + rotation")
       ("stitching_para", 
        value< vector<double> >(&stitching_para)->multitoken(),
-       "Parameters of the chosen image stitching method.\n")
-      ("verbose,v", value<bool>()
-       ->implicit_value(verbose, verbose?"True":"False")->composing(),
-       "Show the final result.");
+       "Parameters of the chosen image stitching mode.\n\n");
 
 	variables_map vm;
 	store(parse_command_line(ac, av, desc), vm);
@@ -85,22 +89,22 @@ int parse(int ac, char** av) {
 			return 0;
 	}
   if(vm.count("matching_para")) {
-    if(!check(matching_para, all_matching[matching_method], 
-              matching_cnt[matching_method], "matching_para"))
+    if(!check(matching_para, all_matching[matching_mode], 
+              matching_cnt[matching_mode], "matching_para"))
       return -1;
-    all_matching_para[matching_method] = matching_para;
+    all_matching_para[matching_mode] = matching_para;
   }
   if(vm.count("projection_para")) {
-     if(!check(projection_para, all_projection[projection_method], 
-               projection_cnt[projection_method], "projection_para"))
+     if(!check(projection_para, all_projection[projection_mode], 
+               projection_cnt[projection_mode], "projection_para"))
       return -1;
-    all_projection_para[projection_method] = projection_para;
+    all_projection_para[projection_mode] = projection_para;
   }
   if(vm.count("stitching_para")) {
-    if(!check(stitching_para, all_stitching[stitching_method], 
-              stitching_cnt[stitching_method], "stitching"))
+    if(!check(stitching_para, all_stitching[stitching_mode], 
+              stitching_cnt[stitching_mode], "stitching"))
       return -1;
-    all_stitching_para[stitching_method] = stitching_para;
+    all_stitching_para[stitching_mode] = stitching_para;
   }
 
   verbose = vm.count("verbose");

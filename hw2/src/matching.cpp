@@ -80,8 +80,8 @@ void MATCHING::HAAR() {
                 if(err < fir) sec = fir, fir_j = pj, fir = err;
                 else if(err < sec) sec = err;
               }
-              if(fir_j != -1 && sec != DBL_MAX && 
-                 is_align(ki, keypoints[p2][fir_j], _para[2])) {
+              if(fir_j != -1 && sec != DBL_MAX) {
+                 //is_align(ki, keypoints[p2][fir_j], _para[2])) {
                 #pragma omp critical
                 pre_match[p1][p2].emplace_back(pi, fir_j, fir);
                 all_sec.push_back(sec);
@@ -129,9 +129,9 @@ void MATCHING::exhaustive() {
   size_t pic_num = keypoints.size();
   match_pairs.clear();
   match_pairs.resize(pic_num, vector<vector<pair<int,int>>>(pic_num));
-  //#pragma omp parallel for
+  #pragma omp parallel for
   for(size_t p1 = 0; p1<pic_num; ++p1)
-    for(size_t p2 = 0; p2<pic_num; ++p2) {
+    for(size_t p2 = p1+1; p2<pic_num; ++p2) {
       for(size_t i = 0; i<keypoints[p1].size(); ++i) {
         const auto& ki = keypoints[p1][i];
         double min_err = DBL_MAX;
@@ -149,29 +149,6 @@ void MATCHING::exhaustive() {
            //is_align(ki, keypoints[pic+1][bestj], _para[0]))
           match_pairs[p1][p2].emplace_back(i, bestj);
       }
-      //const auto red = Scalar(0, 0, 255);
-      //Mat img0 = imgs[p1].clone();
-      //Mat img1 = imgs[p2].clone();
-      //for (const auto& p : match_pairs[p1][p2]) {
-      //  const Keypoint& kp0 = keypoints[p1][p.first];
-      //  const Keypoint& kp1 = keypoints[p2][p.second];
-      //  drawMarker(img0, Point(kp0.x, kp0.y), red, MARKER_CROSS, 20, 2);
-      //  drawMarker(img1, Point(kp1.x, kp1.y), red, MARKER_CROSS, 20, 2);
-      //}
-      //Size sz[2] = {imgs[p1].size(), imgs[p2].size()};
-      //Mat show(sz[0].height, sz[0].width+sz[1].width, CV_8UC3);
-      //Mat left(show, Rect(0, 0, sz[0].width, sz[0].height));
-      //Mat right(show, Rect(sz[0].width, 0, sz[1].width, sz[1].height));
-      //img0.copyTo(left);
-      //img1.copyTo(right);
-      //for(const auto& p : match_pairs[p1][p2]) {
-      //  const Keypoint& kp0 = keypoints[p1][p.first];
-      //  const Keypoint& kp1 = keypoints[p2][p.second];
-      //  line(show, Point(kp0.x, kp0.y), 
-      //       Point(sz[0].width+kp1.x, kp1.y), red, 2, 8);
-      //}
-      //imshow("exhaustive", show);
-      //waitKey(0);
       if(!panorama_mode) break;
     }
 }

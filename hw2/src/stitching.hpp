@@ -12,6 +12,7 @@ public:
  void translation();
  void focal_length();
  void rotation();
+ void autostitch();
 private:
   bool is_inliner(size_t, size_t, double, double, const pair<int, int>&, double);
   bool is_inliner(size_t, size_t, const Mat&, const pair<int, int>&); 

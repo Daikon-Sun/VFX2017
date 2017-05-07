@@ -71,7 +71,8 @@ void PANORAMA::process() {
   typedef void(STITCHING::*type4)();
   vector<type4> stitchings = {&STITCHING::translation,
                               &STITCHING::focal_length,
-                              &STITCHING::rotation};
+                              &STITCHING::rotation,
+                              &STITCHING::autostitch};
   execute<type4>(stitchings[_stitching_mode]);
 
   visualization();
@@ -89,12 +90,7 @@ void PANORAMA::visualization() {
       set_focal_length(f); 
       cylindrical();
     }
-    if(_stitching_mode <= 2) {
-      for(size_t pic = 0; pic+1<pic_num; ++pic) {
-        copyMakeBorder(_shift[pic][pic+1], _shift[pic][pic+1], 0, 1, 0, 0,
-                       BORDER_CONSTANT, 0);
-        _shift[pic][pic+1].at<double>(2, 2) = 1;
-      }
+    if(_stitching_mode <= 3) {
       for(size_t pic = 1; pic+1<pic_num; ++pic)
         _shift[pic][pic+1] *= _shift[pic-1][pic];
       double mnx = 0, mny = 0, mxx = _imgs[0].cols, mxy = _imgs[0].rows;

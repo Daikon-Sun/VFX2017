@@ -76,10 +76,11 @@ int parse(int ac, char** av) {
        "modes of image stitching:\n"
        "  0: \ttranslation\n"
        "  1: \ttranslation + estimate focal length\n"
-       "  2: \ttranslation + rotation")
+       "  2: \ttranslation + rotation\n"
+       "  3: \tautomatic stitching")
       ("stitching_para", 
        value< vector<double> >(&stitching_para)->multitoken(),
-       "Parameters of the chosen image stitching mode.\n\n");
+       "Parameters of the chosen image stitching mode.");
 
 	variables_map vm;
 	store(parse_command_line(ac, av, desc), vm);

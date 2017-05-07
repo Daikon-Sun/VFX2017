@@ -63,8 +63,9 @@ void STITCHING::translation() {
           best_sy = sy;
         }
       }
-      shift[p1][p2] = (Mat_<double>(2, 3) << 1, 0, best_sx,
-                                             0, 1, best_sy);
+      shift[p1][p2] = (Mat_<double>(3, 3) << 1, 0, best_sx,
+                                             0, 1, best_sy,
+                                             0, 0,       1);
       if(!panorama_mode) break;
     }
 }
@@ -124,8 +125,9 @@ void STITCHING::focal_length() {
           best_f = f;
         }
       }
-      shift[p1][p2] = (Mat_<double>(2, 3) << 1, best_f, best_sx,
-                                             0,      1, best_sy);
+      shift[p1][p2] = (Mat_<double>(3, 3) << 1, best_f, best_sx,
+                                             0,      1, best_sy,
+                                             0,      0,       1);
       if(!panorama_mode) break;
     }
 }
@@ -174,7 +176,29 @@ void STITCHING::rotation() {
           sol.copyTo(best_sol);
         }
       }
+      copyMakeBorder(best_sol, best_sol, 0, 1, 0, 0, BORDER_CONSTANT, 0);
+      best_sol.at<double>(2, 2) = 1;
       shift[p1][p2] = best_sol.clone();
       if(!panorama_mode) break;
     }
+}
+void STITCHING::autostitch() {
+  cerr << __func__; 
+  size_t pic_num = imgs.size();
+  shift.clear();
+  shift.resize(pic_num, vector<Mat>(pic_num));
+  for(size_t p1 = 0; p1<pic_num; ++p1) {
+    for(size_t p2 = p1+1; p2<pic_num; ++p2) {
+      vector<Point2f> src, dst;      
+      for(const auto& mp : match_pairs[p1][p2]) {
+        int k1, k2; tie(k1, k2) = mp;
+        const auto& kp1 = keypoints[p1][k1];
+        const auto& kp2 = keypoints[p2][k2];
+        src.emplace_back(kp2.x, kp2.y);
+        dst.emplace_back(kp1.x, kp1.y);
+      }
+      shift[p1][p2] = findHomography(src, dst, CV_RANSAC, _para[1]);
+      if(!panorama_mode) break;
+    }
+  }
 }

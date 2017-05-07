@@ -74,9 +74,9 @@ void PANORAMA::process() {
                               &STITCHING::rotation};
   execute<type4>(stitchings[_stitching_mode]);
 
-  visualize();
+  visualization();
 }
-void PANORAMA::visualize() {
+void PANORAMA::visualization() {
   cerr << __func__ << endl;
   size_t pic_num = _imgs.size();
   if(!_panorama_mode) {
@@ -89,19 +89,23 @@ void PANORAMA::visualize() {
       set_focal_length(f); 
       cylindrical();
     }
-    if(!_stitching_mode || _stitching_mode == 1) {
+    if(_stitching_mode <= 2) {
+      for(size_t pic = 0; pic+1<pic_num; ++pic) {
+        copyMakeBorder(_shift[pic][pic+1], _shift[pic][pic+1], 0, 1, 0, 0,
+                       BORDER_CONSTANT, 0);
+        _shift[pic][pic+1].at<double>(2, 2) = 1;
+      }
       for(size_t pic = 1; pic+1<pic_num; ++pic)
-        _shift[pic][pic+1] += _shift[pic-1][pic];
-
+        _shift[pic][pic+1] *= _shift[pic-1][pic];
       double mnx = 0, mny = 0, mxx = _imgs[0].cols, mxy = _imgs[0].rows;
       vector<vector<vector<Point2d>>> new_pos(pic_num);
       for(size_t pic = 1; pic<pic_num; ++pic) {
-        const double& dx = _shift[pic-1][pic].at<double>(0, 2);
-        const double& dy = _shift[pic-1][pic].at<double>(1, 2);
         new_pos[pic].resize(_imgs[pic].cols, vector<Point2d>(_imgs[pic].rows));
         for(int x = 0; x<_imgs[pic].cols; ++x)
           for(int y = 0; y<_imgs[pic].rows; ++y) {
-            double nx = (double)x+dx, ny = (double)y+dy;
+            Mat pos = _shift[pic-1][pic] * (Mat_<double>(3, 1) << x, y, 1);
+            const double& nx = pos.at<double>(0, 0);
+            const double& ny = pos.at<double>(1, 0);
             new_pos[pic][x][y] = {nx, ny};
             mnx = min(mnx, nx);
             mxx = max(mxx, nx);
@@ -109,7 +113,7 @@ void PANORAMA::visualize() {
             mxy = max(mxy, ny);
           }
       } 
-      Mat show = Mat::zeros(mxy-mny+2, mxx-mnx+2, CV_8UC3);
+      Mat show = Mat::zeros(mxy-mny, mxx-mnx, CV_8UC3);
       _imgs[0].copyTo(show(Rect(0, -mny, _imgs[0].cols, _imgs[0].rows)));
       for(size_t pic = 1; pic<pic_num; ++pic)
         for(int x = 0; x<_imgs[pic].cols; ++x)
@@ -117,6 +121,7 @@ void PANORAMA::visualize() {
             new_pos[pic][x][y] -= {mnx, mny};
             show.at<Vec3b>(new_pos[pic][x][y]) = _imgs[pic].at<Vec3b>(y, x);
           }
+      imwrite(_out_jpg, show);
       namedWindow("visualize", WINDOW_NORMAL);
       imshow("visualize", show);
       waitKey(0);

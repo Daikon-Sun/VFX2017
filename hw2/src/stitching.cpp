@@ -25,9 +25,9 @@ bool STITCHING::is_inliner(size_t p1, size_t p2, const Mat& sol,
                            const pair<int, int>& kpid) {
   int kpid1, kpid2; tie(kpid1, kpid2) = kpid;
   const auto& kp1 = keypoints[p1][kpid1], kp2 = keypoints[p2][kpid2];
-  Mat pos1 = (Mat_<double>(3, 1) << kp1.x, kp1.y, 1);
-  pos1 = sol * pos1;
-  Mat pos2 = (Mat_<double>(2, 1) << kp2.x, kp2.y);
+  Mat pos2 = (Mat_<double>(3, 1) << kp2.x, kp2.y, 1);
+  pos2 = sol * pos2;
+  Mat pos1 = (Mat_<double>(2, 1) << kp1.x, kp1.y);
   Mat err = pos1 - pos2;
   return sum(err.mul(err))[0] < _para[1];
 }
@@ -154,11 +154,11 @@ void STITCHING::rotation() {
         const auto& kp12 = keypoints[p2][kpid12];
         const auto& kp22 = keypoints[p2][kpid22];
         const auto& kp32 = keypoints[p2][kpid32];
-        Mat rot = (Mat_<double>(3, 3) << kp11.x, kp21.x, kp31.x,
-                                         kp11.y, kp21.y, kp31.y,
+        Mat rot = (Mat_<double>(3, 3) << kp12.x, kp22.x, kp32.x,
+                                         kp12.y, kp22.y, kp32.y,
                                             1.0,    1.0,    1.0);
-        Mat pos = (Mat_<double>(2, 3) << kp12.x, kp22.x, kp32.x,
-                                         kp12.y, kp22.y, kp32.y);
+        Mat pos = (Mat_<double>(2, 3) << kp11.x, kp21.x, kp31.x,
+                                         kp11.y, kp21.y, kp31.y);
         Mat sol = pos * rot.inv();
         int in_cnt1 = 0, in_cnt2 = 0;
         for(size_t id3 = 0; id3<match_pairs[p1][p2].size(); ++id3)

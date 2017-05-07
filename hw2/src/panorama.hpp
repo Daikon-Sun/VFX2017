@@ -12,9 +12,9 @@ public:
            const int&, const int&, const int&, const int&, const int&, 
            const Para&, const Para&, const Para&, const bool&);
   void process();
-  void visualize();
 private:
   template<typename T> void execute(const T& f);
+  void visualization();
   vector<Mat> _imgs;
   int _panorama_mode;
   int _detection_mode, _matching_mode, _projection_mode, _stitching_mode;

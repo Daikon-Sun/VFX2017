@@ -182,11 +182,15 @@ void STITCHING::rotation() {
       if(!panorama_mode) break;
     }
 }
+constexpr int M = 1;
 void STITCHING::autostitch() {
   cerr << __func__; 
   size_t pic_num = imgs.size();
+  //vector<vector<Mat>> msk(pic_num, vector<Mat>(pic_num));
+  vector<vector<pair<int, int>>> in_cnt(pic_num, vector<pair<int,int>>(pic_num));
   shift.clear();
   shift.resize(pic_num, vector<Mat>(pic_num));
+  
   for(size_t p1 = 0; p1<pic_num; ++p1) {
     for(size_t p2 = p1+1; p2<pic_num; ++p2) {
       vector<Point2f> src, dst;      
@@ -197,8 +201,24 @@ void STITCHING::autostitch() {
         src.emplace_back(kp2.x, kp2.y);
         dst.emplace_back(kp1.x, kp1.y);
       }
-      shift[p1][p2] = findHomography(src, dst, CV_RANSAC, _para[1]);
+      Mat msk;
+      shift[p1][p2] = findHomography(src, dst, CV_RANSAC, _para[1], msk);
+      int sm = sum(msk)[0];
+      in_cnt[p1][p2] = {sm, p2};
+      in_cnt[p2][p1] = {sm, p1};
       if(!panorama_mode) break;
     }
   }
+  vector<pair<int,int>> connect;
+  for(size_t i = 0; i<pic_num; ++i) {
+    sort(in_cnt[i].begin(), in_cnt[i].end(), greater<pair<int,int>>()); 
+    for(size_t j = 0; j<M && j<in_cnt[i].size(); ++j) {
+      int p1 = i, p2 = in_cnt[i][j].second;
+      if(p1 >= p2) swap(p1, p2);
+      if(in_cnt[i][j].first > 5.9+0.22*match_pairs[p1][p2].size())
+        connect.emplace_back(p1, p2);
+    }
+  }
+  sort(connect.begin(), connect.end());
+  connect.resize(unique(connect.begin(), connect.end()) - connect.begin());
 }

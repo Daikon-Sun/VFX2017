@@ -30,7 +30,7 @@ Paras all_projection_para = {{}, {750}};
 vector<int> projection_cnt = {0, 1};
 
 int stitching_mode = 0;
-Paras all_stitching_para = {{5000, 10}, {5000, 10}, {5000, 10}, {5000, 10}};
+Paras all_stitching_para = {{5000, 15}, {5000, 15}, {5000, 15}, {5000, 15}};
 vector<int> stitching_cnt = {2, 2, 2, 2};
 
 string in_list = "input_images.txt";

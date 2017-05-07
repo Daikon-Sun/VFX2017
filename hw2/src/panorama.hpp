@@ -9,17 +9,18 @@
 class PANORAMA : public DETECTION, public MATCHING, public PROJECTION, public STITCHING {
 public:
   PANORAMA(const string&, const string&, const int&, const int&, const int&,
-           const int&, const Para&, const Para&, const Para&);
+           const int&, const int&, const Para&, const Para&, const Para&);
   void process();
   void visualize();
 private:
   template<typename T> void execute(const T& f);
   vector<Mat> _imgs;
-  int _detection_method, _matching_method, _projection_method, _stitching_method;
+  int _panorama_mode;
+  int _detection_mode, _matching_mode, _projection_mode, _stitching_mode;
   string _out_jpg;
-  vector< vector< Keypoint> > _keypoints;
-  vector< vector< pair<int, int> > > _match_pairs;
-  vector< pair<double, double> > _shift;
+  vector<vector<Keypoint>> _keypoints;
+  vector<vector<vector<pair<int,int>>>> _match_pairs;
+  vector<vector<pair<double,double>>> _shift;
 };
 
 #endif

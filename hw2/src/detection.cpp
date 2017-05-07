@@ -63,8 +63,12 @@ void DETECTION::MSOP() {
 
       // compute keypoints
       vector<PreKeypoint> pre_kpts;
-      for (int x = 60, xm = pyr[lev].cols-60; x < xm; ++x)
-        for (int y = 60, ym = pyr[lev].rows-60; y < ym; ++y) {
+      pre_kpts.reserve(10000);
+      const int xm = pyr[lev].cols-60;
+      const int ym = pyr[lev].rows-60;
+      #pragma omp parallel for collapse(2)
+      for (int x = 60; x < xm; ++x)
+        for (int y = 60; y < ym; ++y) {
           double val = HM.at<double>(y,x);
           if (val < HM_THRESHOLD) continue;
           if ( 
@@ -77,12 +81,13 @@ void DETECTION::MSOP() {
             val < HM.at<double>(y-1,x  ) ||
             val < HM.at<double>(y-1,x-1)
           ) continue;
-          pre_kpts.push_back(PreKeypoint(x, y, val));
+          pre_kpts.emplace_back(x, y, val);
         }
 
       // apply ANMS method
-      for (int k = 0, n = pre_kpts.size(); k < n; ++k)
-        for (int j = i+1; j < n; ++j) {
+      #pragma omp parallel for
+      for (size_t k = 0; k < pre_kpts.size(); ++k)
+        for (int j = k+1; j < pre_kpts.size(); ++j) {
           int newR2 = pow(pre_kpts[k].x - pre_kpts[j].x, 2) 
                     + pow(pre_kpts[k].y - pre_kpts[j].y, 2);
           if (pre_kpts[k].hm < ANMS_ROBUST_RATIO * pre_kpts[j].hm) {
@@ -102,8 +107,10 @@ void DETECTION::MSOP() {
       GaussianBlur(pyr[lev], P, Size(G_KERN, G_KERN), SIGMA_O);
       filter2D(P, Px, -1, Kernel_x);
       filter2D(P, Py, -1, Kernel_y);
-      size_t j = kpts.size();
-      for (const auto& p : pre_kpts) {
+      const size_t orig_size = kpts.size();
+      #pragma omp parallel for
+      for(size_t k = 0; k<pre_kpts.size(); ++k) {
+        const auto& p = pre_kpts[k];
         double dx = (
           HM.at<double>(p.y, p.x+1) -
           HM.at<double>(p.y, p.x-1)
@@ -147,7 +154,8 @@ void DETECTION::MSOP() {
       }
 
       // compute feature descriptor
-      for(; j<kpts.size(); ++j) {
+      #pragma omp parallel for
+      for(size_t j = orig_size; j<kpts.size(); ++j) {
         auto& p = kpts[j];
         Mat m, rot;
         GaussianBlur(pyr[lev+1], m, Size(G_KERN, G_KERN), SIGMA_P);

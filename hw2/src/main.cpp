@@ -45,6 +45,7 @@ int main(int argc, char** argv) {
   else if(state < 0) return 1;
 
   PANORAMA panorama(in_list, out_jpg,
+                    panorama_mode,
                     detection_mode,
                     matching_mode,
                     projection_mode,

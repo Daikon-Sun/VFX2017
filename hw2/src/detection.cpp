@@ -169,22 +169,20 @@ void DETECTION::MSOP() {
   }
 }
 
-#define OCTAVE_NUM              3
-#define OCTAVE_SCALE_NUM        3
-#define SIGMA                   pow(2, 1.0/(double)OCTAVE_SCALE_NUM)
-#define OCTAVE_LAYER            OCTAVE_SCALE_NUM+3
-#define GAUSSIAN_KERN           7
-#define PRE_SIGMA               1.6
-#define CONTRAST_THRES          0.03
-#define CURVATURE_THRES_R       10.0
-#define CURVATURE_THRES         pow(CURVATURE_THRES_R+1, 2)/CURVATURE_THRES_R
-#define ORIENT_WINDOW           17
-#define HALF_ORIENT             (ORIENT_WINDOW-1)/2
-#define DESC_WINDOW             16
-#define HALF_DESC               DESC_WINDOW/2
-#define DESC_SIGMA              0.5*DESC_WINDOW
-
-inline bool is_extrema(const vector<vector<Mat>>&, int, int, int, int);
+constexpr int OCTAVE_NUM           = 3;
+constexpr int OCTAVE_SCALE_NUM     = 3;
+constexpr double SIGMA             = pow(2, 1.0/(double)OCTAVE_SCALE_NUM);
+constexpr int OCTAVE_LAYER         = OCTAVE_SCALE_NUM+3;
+constexpr double GAUSSIAN_KERN     = 7;
+constexpr double PRE_SIGMA         = 1.6;
+constexpr double CONTRAST_THRES    = 0.03;
+constexpr double CURVATURE_THRES_R = 10.0;
+constexpr double CURVATURE_THRES   = pow(CURVATURE_THRES_R+1,2)/CURVATURE_THRES_R;
+constexpr int ORIENT_WINDOW        = 17;
+constexpr int HALF_ORIENT          = (ORIENT_WINDOW-1)/2;
+constexpr int DESC_WINDOW          = 16;
+constexpr int HALF_DESC            = DESC_WINDOW/2;
+constexpr int DESC_SIGMA           = 0.5*DESC_WINDOW;
 
 void DETECTION::SIFT() {
   cerr << __func__;
@@ -248,8 +246,9 @@ void DETECTION::SIFT() {
           for (int r=lim; r<r_max; ++r) {
             if (!is_extrema(d_octaves, t, l, r, c)) continue;
             bool found = false;
-            int ll = l, cc = c, rr = r;
-            while(!found) {
+            int iter = 0, ll = l, cc = c, rr = r;
+            while(!found && iter < 2) {
+              ++iter;
               double value = d_octaves[t][ll].at<double>(rr, cc);
               double Dx = (
                 d_octaves[t][ll].at<double>(rr, cc+1) - 
@@ -308,6 +307,7 @@ void DETECTION::SIFT() {
               double mn, mx;
               minMaxLoc(h, &mn, &mx, &pmn, &pmx);
               if(abs(mn) > 0.5 || abs(mx) > 0.5) {
+                found = false;
                 if(abs(h.at<double>(0, 0)) > 0.5)
                   cc += (h.at<double>(0, 0) < 0 ? -1 : 1);
                 if(abs(h.at<double>(1, 0)) > 0.5)    
@@ -315,19 +315,10 @@ void DETECTION::SIFT() {
                 if(abs(h.at<double>(2, 0)) > 0.5)    
                   ll += (h.at<double>(2, 0) < 0 ? -1 : 1);
                 int good = 0;
-                if(cc >= c_max) cc = c_max;
-                else if(cc < lim) cc = lim;
-                else ++good;
-                if(rr >= r_max) rr = r_max;
-                else if(rr < lim) rr = lim;
-                else ++good;
-                if(ll >= OCTAVE_LAYER-2) ll = OCTAVE_LAYER-2;
-                else if(ll < 1) ll = 1;
-                else ++good;
-                if(good != 3) {
-                  found = false;
-                  break;
-                }
+                if(cc < c_max && cc >= lim) ++good;
+                if(rr < r_max && rr >= lim) ++good;
+                if(ll < OCTAVE_LAYER-2 && ll >= 1) ++good;
+                if(good != 3) break;
               }
               if(!found) continue;
               double new_value = value + 0.5 * parD.dot(h);
@@ -344,7 +335,7 @@ void DETECTION::SIFT() {
                 break;
               }
             }
-            if(found) {
+            if(found && iter<2) {
               /**************************************/
               /**      orientation assignment      **/
               /**************************************/
@@ -403,11 +394,13 @@ void DETECTION::SIFT() {
     /**       keypoint descriptor        **/
     /**************************************/
     keypoints[i].reserve(siftpoints.size()); 
+    for(size_t j = 0; j<siftpoints.size(); ++j)
+      keypoints[i].emplace_back(siftpoints[j].x, siftpoints[j].y,
+                                siftpoints[j].t);
     #pragma omp parallel for
     for(size_t j = 0; j<siftpoints.size(); ++j) {
       auto& spt = siftpoints[j];
       const int& midx = spt.x, midy = spt.y;
-      keypoints[i].emplace_back(midx, midy, spt.t);
       Rect roi = Rect(midx-HALF_DESC, midy-HALF_DESC, DESC_WINDOW, DESC_WINDOW);
       Mat G_W = L[i](Rect(roi)).clone();
       GaussianBlur(G_W, G_W, Size(), DESC_SIGMA, DESC_SIGMA);
@@ -426,7 +419,7 @@ void DETECTION::SIFT() {
           if(orient[ny][nx] < 0) orient[ny][nx] += 360;
         }
       MAG = MAG.mul(G_W);
-      auto& kpt = keypoints[i].back();
+      auto& kpt = keypoints[i][j];
       kpt.patch = Mat::zeros(128, 1, CV_64FC1);
       for(int lx = midx-HALF_DESC, cntx = 0; cntx<4; lx+=4, ++cntx)
         for(int ly = midy-HALF_DESC, cnty = 0; cnty<4; ly+=4, ++cnty)
@@ -440,9 +433,8 @@ void DETECTION::SIFT() {
     }
   }
 }
-// helper functions
-inline bool is_extrema(const vector<vector<Mat>>& img,
-                       int t, int l, int r, int c) {
+bool DETECTION::is_extrema(const vector<vector<Mat>>& img,
+                           int t, int l, int r, int c) {
   double value = img[t][l].at<double>(r, c);
   return ((
     value <= img[t][l].at<double>(r+1, c+1) &&

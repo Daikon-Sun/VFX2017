@@ -27,9 +27,11 @@ public:
   void MSOP();
   void SIFT();
 
-protected:
+private:
+  bool is_extrema(const vector< vector<Mat> >&, int, int, int, int);
   const vector<Mat>& imgs;
   vector< vector<Keypoint> >& keypoints;
+
 };
 
 #endif

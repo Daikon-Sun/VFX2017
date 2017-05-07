@@ -67,7 +67,7 @@ void MATCHING::HAAR() {
         for(int k=0; k<BIN_NUM; ++k)
           for(auto pi : table[pic][i][j][k]) {
             const auto& ki = keypoints[pic][pi];
-            double fir = FLT_MAX, sec = FLT_MAX;
+            double fir = DBL_MAX, sec = DBL_MAX;
             int fir_j = -1;
             for(auto pj : table[pic+1][i][j][k]) {
               const auto& kj = keypoints[pic+1][pj];
@@ -76,7 +76,7 @@ void MATCHING::HAAR() {
               if(err < fir) sec = fir, fir_j = pj, fir = err;
               else if(err < sec) sec = err;
             }
-            if(fir_j != -1 && sec != FLT_MAX && 
+            if(fir_j != -1 && sec != DBL_MAX && 
                is_align(ki, keypoints[pic+1][fir_j], _para[2])) {
               pre_match[pic].emplace_back(pi, fir_j, fir);
               all_sec.push_back(sec);
@@ -120,7 +120,7 @@ void MATCHING::exhaustive() {
   for(size_t pic = 0; pic<pic_num-1; ++pic) {
     for(size_t i = 0; i<keypoints[pic].size(); ++i) {
       const auto& ki = keypoints[pic][i];
-      double min_err = FLT_MAX;
+      double min_err = DBL_MAX;
       int bestj = -1;
       for(size_t j = 0; j<keypoints[pic+1].size(); ++j) {
         const auto& kj = keypoints[pic+1][j];
@@ -165,7 +165,7 @@ bool MATCHING::check_match_haar(const tuple<int, int, double>& mp,
                            size_t pic, double sec_mn) const {
   const int& pj = get<1>(mp);
   const auto& kj = keypoints[pic+1][pj];
-  double fir = FLT_MAX, sec = FLT_MAX;
+  double fir = DBL_MAX, sec = DBL_MAX;
   int fir_i = -1;
   #pragma omp parallel for
   for(size_t pi = 0; pi<keypoints[pic].size(); ++pi) {
@@ -179,7 +179,7 @@ bool MATCHING::check_match_haar(const tuple<int, int, double>& mp,
 }
 bool MATCHING::check_match_exhaustive(int target_i, int j, size_t pic) {
   const auto& kj = keypoints[pic+1][j];
-  double min_err = FLT_MAX;
+  double min_err = DBL_MAX;
   int best_i = -1;
   for(size_t i = 0; i<keypoints[pic].size(); ++i) {
     const auto& ki = keypoints[pic][i];

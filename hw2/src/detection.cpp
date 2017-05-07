@@ -47,7 +47,6 @@ void DETECTION::MSOP() {
     // apply multi-scale Harris corner detector
     vector<Keypoint>& kpts = keypoints[i];
     kpts.reserve(MAX_LAYER * KEYPOINT_NUM);
-    #pragma omp parallel for schedule(dynamic, 1)
     for (int lev = 0; lev < MAX_LAYER; ++lev) {
       Mat P, Px, Py;
       GaussianBlur(pyr[lev], P, Size(G_KERN, G_KERN), SIGMA_D);
@@ -66,7 +65,6 @@ void DETECTION::MSOP() {
       pre_kpts.reserve(10000);
       const int xm = pyr[lev].cols-60;
       const int ym = pyr[lev].rows-60;
-      #pragma omp parallel for collapse(2)
       for (int x = 60; x < xm; ++x)
         for (int y = 60; y < ym; ++y) {
           double val = HM.at<double>(y,x);
@@ -85,7 +83,6 @@ void DETECTION::MSOP() {
         }
 
       // apply ANMS method
-      #pragma omp parallel for
       for (size_t k = 0; k < pre_kpts.size(); ++k)
         for (int j = k+1; j < pre_kpts.size(); ++j) {
           int newR2 = pow(pre_kpts[k].x - pre_kpts[j].x, 2) 
@@ -108,7 +105,6 @@ void DETECTION::MSOP() {
       filter2D(P, Px, -1, Kernel_x);
       filter2D(P, Py, -1, Kernel_y);
       const size_t orig_size = kpts.size();
-      #pragma omp parallel for
       for(size_t k = 0; k<pre_kpts.size(); ++k) {
         const auto& p = pre_kpts[k];
         double dx = (
@@ -154,7 +150,6 @@ void DETECTION::MSOP() {
       }
 
       // compute feature descriptor
-      #pragma omp parallel for
       for(size_t j = orig_size; j<kpts.size(); ++j) {
         auto& p = kpts[j];
         Mat m, rot;
@@ -212,7 +207,6 @@ void DETECTION::SIFT() {
     /**************************************/
     vector< vector<Mat> > g_octaves(OCTAVE_NUM);  // Gaussian octaves
     vector< vector<Mat> > d_octaves(OCTAVE_NUM);  // DoG octaves
-    #pragma omp parallel for
     for (int t=0; t<OCTAVE_NUM; ++t) {
       g_octaves[t].resize(OCTAVE_LAYER);
       d_octaves[t].resize(OCTAVE_LAYER-1);
@@ -236,12 +230,10 @@ void DETECTION::SIFT() {
     /**  accurate keypoint localization  **/
     /**************************************/
     const int lim = HALF_ORIENT+1;
-    #pragma omp parallel for collapse(2)
     for (int t=0; t<OCTAVE_NUM; ++t)
       for (int l=1; l<OCTAVE_LAYER-2; ++l) {
         const int c_max = d_octaves[t][l].cols-lim;
         const int r_max = d_octaves[t][l].rows-lim;
-        #pragma omp parallel for collapse(2)
         for (int c=lim; c<c_max; ++c)
           for (int r=lim; r<r_max; ++r) {
             if (!is_extrema(d_octaves, t, l, r, c)) continue;
@@ -389,7 +381,6 @@ void DETECTION::SIFT() {
     for(size_t j = 0; j<siftpoints.size(); ++j)
       keypoints[i].emplace_back(siftpoints[j].x, siftpoints[j].y,
                                 siftpoints[j].t);
-    #pragma omp parallel for
     for(size_t j = 0; j<siftpoints.size(); ++j) {
       auto& spt = siftpoints[j];
       const int& midx = spt.x, midy = spt.y;

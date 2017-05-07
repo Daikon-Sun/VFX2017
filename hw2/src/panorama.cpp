@@ -19,13 +19,15 @@ PANORAMA::PANORAMA(const string& in_list, const string& out_jpg,
                    const int& stitching_mode,
                    const Para& matching_para,
                    const Para& projection_para,
-                   const Para& stitching_para) 
+                   const Para& stitching_para,
+                   const bool& verbose)
                   : _panorama_mode(panorama_mode),
                     _detection_mode(detection_mode),
                     _matching_mode(matching_mode), 
                     _projection_mode(projection_mode), 
                     _stitching_mode(stitching_mode), 
                     _out_jpg(out_jpg),
+                    _verbose(verbose),
                     DETECTION(_imgs, _keypoints),
                     MATCHING(panorama_mode, matching_para, _imgs, 
                              _keypoints, _match_pairs),
@@ -71,33 +73,50 @@ void PANORAMA::process() {
                               &STITCHING::focal_length,
                               &STITCHING::rotation};
   execute<type4>(stitchings[_stitching_mode]);
+
+  visualize();
 }
 void PANORAMA::visualize() {
+  cerr << __func__ << endl;
+  size_t pic_num = _imgs.size();
   if(!_panorama_mode) {
-    cerr << __func__ << endl;
-    for(size_t pic = 0; pic+1<_keypoints.size(); ++pic) {
-      const Scalar red = Scalar(0, 0, 255);
-      Mat img0 = _imgs[pic].clone();
-      Mat img1 = _imgs[pic+1].clone();
-      for (const auto& p : _match_pairs[pic][pic+1]) {
-        const Keypoint& kp0 = _keypoints[pic][p.first];
-        const Keypoint& kp1 = _keypoints[pic+1][p.second];
-        drawMarker(img0, Point(kp0.x, kp0.y), red, MARKER_CROSS, 20, 2);
-        drawMarker(img1, Point(kp1.x, kp1.y), red, MARKER_CROSS, 20, 2);
+    if(_stitching_mode == 1) {
+      double f = 0;
+      for(size_t pic = 0; pic<pic_num; ++pic) {
+        f += _shift[pic][pic+1].at<double>(0, 1) / _imgs.size();
+        _shift[pic][pic+1].at<double>(0, 1) = 0.0;
       }
-      Size sz[2];
-      for(size_t i = 0; i<2; ++i) sz[i] = _imgs[pic+i].size();
-      Mat show(sz[0].height, sz[0].width+sz[1].width, CV_8UC3);
-      Mat left(show, Rect(0, 0, sz[0].width, sz[0].height));
-      Mat right(show, Rect(sz[0].width, 0, sz[1].width, sz[1].height));
-      img0.copyTo(left);
-      img1.copyTo(right);
-      for(const auto& p : _match_pairs[pic][pic+1]) {
-        const Keypoint& kp0 = _keypoints[pic][p.first];
-        const Keypoint& kp1 = _keypoints[pic+1][p.second];
-        line(show, Point(kp0.x, kp0.y), 
-             Point(sz[0].width+kp1.x, kp1.y), red, 2, 8);
-      }
+      set_focal_length(f); 
+      cylindrical();
+    }
+    if(!_stitching_mode || _stitching_mode == 1) {
+      for(size_t pic = 1; pic+1<pic_num; ++pic)
+        _shift[pic][pic+1] += _shift[pic-1][pic];
+
+      double mnx = 0, mny = 0, mxx = _imgs[0].cols, mxy = _imgs[0].rows;
+      vector<vector<vector<Point2d>>> new_pos(pic_num);
+      for(size_t pic = 1; pic<pic_num; ++pic) {
+        const double& dx = _shift[pic-1][pic].at<double>(0, 2);
+        const double& dy = _shift[pic-1][pic].at<double>(1, 2);
+        new_pos[pic].resize(_imgs[pic].cols, vector<Point2d>(_imgs[pic].rows));
+        for(int x = 0; x<_imgs[pic].cols; ++x)
+          for(int y = 0; y<_imgs[pic].rows; ++y) {
+            double nx = (double)x+dx, ny = (double)y+dy;
+            new_pos[pic][x][y] = {nx, ny};
+            mnx = min(mnx, nx);
+            mxx = max(mxx, nx);
+            mny = min(mny, ny);
+            mxy = max(mxy, ny);
+          }
+      } 
+      Mat show = Mat::zeros(mxy-mny+2, mxx-mnx+2, CV_8UC3);
+      _imgs[0].copyTo(show(Rect(0, -mny, _imgs[0].cols, _imgs[0].rows)));
+      for(size_t pic = 1; pic<pic_num; ++pic)
+        for(int x = 0; x<_imgs[pic].cols; ++x)
+          for(int y = 0; y<_imgs[pic].rows; ++y) {
+            new_pos[pic][x][y] -= {mnx, mny};
+            show.at<Vec3b>(new_pos[pic][x][y]) = _imgs[pic].at<Vec3b>(y, x);
+          }
       namedWindow("visualize", WINDOW_NORMAL);
       imshow("visualize", show);
       waitKey(0);

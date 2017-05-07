@@ -44,7 +44,7 @@ void MATCHING::HAAR() {
   }
 
   list<int> table[pic_num][BIN_NUM][BIN_NUM][BIN_NUM];
-  #pragma omp parallel for schedule(dynamic, 1)
+  #pragma omp parallel for
   for(size_t pic = 0; pic<pic_num; ++pic)
     for(size_t pi = 0; pi<keypoints[pic].size(); ++pi) {
       const Keypoint& p = keypoints[pic][pi];
@@ -64,25 +64,26 @@ void MATCHING::HAAR() {
     pre_match(pic_num, vector<list<tuple<int,int,double>>>(pic_num));
   list<double> all_sec;
   #pragma omp parallel for
-  for(size_t pic1 = 0; pic1<pic_num; ++pic1)
-    for(size_t pic2 = pic1+1; pic2<pic_num; ++pic2) {
+  for(size_t p1 = 0; p1<pic_num; ++p1)
+    for(size_t p2 = p1+1; p2<pic_num; ++p2) {
       for(int i=0; i<BIN_NUM; ++i)
         for(int j=0; j<BIN_NUM; ++j)
           for(int k=0; k<BIN_NUM; ++k)
-            for(auto pi : table[pic1][i][j][k]) {
-              const auto& ki = keypoints[pic1][pi];
+            for(auto pi : table[p1][i][j][k]) {
+              const auto& ki = keypoints[p1][pi];
               double fir = DBL_MAX, sec = DBL_MAX;
               int fir_j = -1;
-              for(auto pj : table[pic2][i][j][k]) {
-                const auto& kj = keypoints[pic2][pj];
+              for(auto pj : table[p2][i][j][k]) {
+                const auto& kj = keypoints[p2][pj];
                 Mat diff = ki.patch - kj.patch;
                 double err = sum(diff.mul(diff))[0];
                 if(err < fir) sec = fir, fir_j = pj, fir = err;
                 else if(err < sec) sec = err;
               }
               if(fir_j != -1 && sec != DBL_MAX && 
-                 is_align(ki, keypoints[pic2][fir_j], _para[2])) {
-                pre_match[pic1][pic2].emplace_back(pi, fir_j, fir);
+                 is_align(ki, keypoints[p2][fir_j], _para[2])) {
+                #pragma omp critical
+                pre_match[p1][p2].emplace_back(pi, fir_j, fir);
                 all_sec.push_back(sec);
               }
             }
@@ -91,29 +92,29 @@ void MATCHING::HAAR() {
   double sec_mn = accumulate(all_sec.begin(), all_sec.end(), 0.0)/all_sec.size();
 
   #pragma omp parallel for
-  for(size_t pic1 = 0; pic1<pic_num; ++pic1)
-    for(size_t pic2 = pic1+1; pic2<pic_num; ++pic2) {
-      pre_match[pic1][pic2].sort();
-      pre_match[pic1][pic2].unique([](auto& x1, auto& x2) { 
+  for(size_t p1 = 0; p1<pic_num; ++p1)
+    for(size_t p2 = p1+1; p2<pic_num; ++p2) {
+      pre_match[p1][p2].sort();
+      pre_match[p1][p2].unique([](auto& x1, auto& x2) { 
                                 return get<0>(x1) == get<0>(x2) && 
                                        get<1>(x1) == get<1>(x2); });
-      auto it = pre_match[pic1][pic2].begin();
-      for(; it != pre_match[pic1][pic2].end();)
+      auto it = pre_match[p1][p2].begin();
+      for(; it != pre_match[p1][p2].end();)
         if(get<2>(*it) < THRESHOLD*sec_mn &&
-           check_match_haar(*it, pic1, pic2, sec_mn)) ++it;
-        else it = pre_match[pic1][pic2].erase(it);
+           check_match_haar(*it, p1, p2, sec_mn)) ++it;
+        else it = pre_match[p1][p2].erase(it);
       if(!panorama_mode) break;
     }
 
   match_pairs.clear();
   match_pairs.resize(pic_num, vector<vector<pair<int,int>>>(pic_num));
   #pragma omp parallel for
-  for(size_t pic1 = 0; pic1<pic_num; ++pic1)
-    for(size_t pic2 = pic1+1; pic2<pic_num; ++pic2) {
-      match_pairs[pic1][pic2].resize(pre_match[pic1][pic2].size());
+  for(size_t p1 = 0; p1<pic_num; ++p1)
+    for(size_t p2 = p1+1; p2<pic_num; ++p2) {
+      match_pairs[p1][p2].resize(pre_match[p1][p2].size());
       int cnt = 0;
-      for(const auto& it : pre_match[pic1][pic2])
-        match_pairs[pic1][pic2][cnt++] = {get<0>(it), get<1>(it)};
+      for(const auto& it : pre_match[p1][p2])
+        match_pairs[p1][p2][cnt++] = {get<0>(it), get<1>(it)};
       if(!panorama_mode) break;
     }
 }
@@ -128,15 +129,15 @@ void MATCHING::exhaustive() {
   size_t pic_num = keypoints.size();
   match_pairs.clear();
   match_pairs.resize(pic_num, vector<vector<pair<int,int>>>(pic_num));
-  #pragma omp parallel for
-  for(size_t pic1 = 0; pic1<pic_num; ++pic1)
-    for(size_t pic2 = 0; pic2<pic_num; ++pic2) {
-      for(size_t i = 0; i<keypoints[pic1].size(); ++i) {
-        const auto& ki = keypoints[pic1][i];
+  //#pragma omp parallel for
+  for(size_t p1 = 0; p1<pic_num; ++p1)
+    for(size_t p2 = 0; p2<pic_num; ++p2) {
+      for(size_t i = 0; i<keypoints[p1].size(); ++i) {
+        const auto& ki = keypoints[p1][i];
         double min_err = DBL_MAX;
         int bestj = -1;
-        for(size_t j = 0; j<keypoints[pic2].size(); ++j) {
-          const auto& kj = keypoints[pic2][j];
+        for(size_t j = 0; j<keypoints[p2].size(); ++j) {
+          const auto& kj = keypoints[p2][j];
           Mat diff = ki.patch - kj.patch;
           double err = sum(diff.mul(diff))[0];
           if(err < min_err) {
@@ -144,45 +145,45 @@ void MATCHING::exhaustive() {
             bestj = j;
           }
         }
-        if(bestj != -1 && check_match_exhaustive(i, bestj, pic1, pic2))
+        if(bestj != -1 && check_match_exhaustive(i, bestj, p1, p2))
            //is_align(ki, keypoints[pic+1][bestj], _para[0]))
-          match_pairs[pic1][pic2].emplace_back(i, bestj);
+          match_pairs[p1][p2].emplace_back(i, bestj);
       }
-      const auto red = Scalar(0, 0, 255);
-      Mat img0 = imgs[pic1].clone();
-      Mat img1 = imgs[pic2].clone();
-      for (const auto& p : match_pairs[pic1][pic2]) {
-        const Keypoint& kp0 = keypoints[pic1][p.first];
-        const Keypoint& kp1 = keypoints[pic2][p.second];
-        drawMarker(img0, Point(kp0.x, kp0.y), red, MARKER_CROSS, 20, 2);
-        drawMarker(img1, Point(kp1.x, kp1.y), red, MARKER_CROSS, 20, 2);
-      }
-      Size sz[2] = {imgs[pic1].size(), imgs[pic2].size()};
-      Mat show(sz[0].height, sz[0].width+sz[1].width, CV_8UC3);
-      Mat left(show, Rect(0, 0, sz[0].width, sz[0].height));
-      Mat right(show, Rect(sz[0].width, 0, sz[1].width, sz[1].height));
-      img0.copyTo(left);
-      img1.copyTo(right);
-      for(const auto& p : match_pairs[pic1][pic2]) {
-        const Keypoint& kp0 = keypoints[pic1][p.first];
-        const Keypoint& kp1 = keypoints[pic2][p.second];
-        line(show, Point(kp0.x, kp0.y), 
-             Point(sz[0].width+kp1.x, kp1.y), red, 2, 8);
-      }
-      imshow("exhaustive", show);
-      waitKey(0);
+      //const auto red = Scalar(0, 0, 255);
+      //Mat img0 = imgs[p1].clone();
+      //Mat img1 = imgs[p2].clone();
+      //for (const auto& p : match_pairs[p1][p2]) {
+      //  const Keypoint& kp0 = keypoints[p1][p.first];
+      //  const Keypoint& kp1 = keypoints[p2][p.second];
+      //  drawMarker(img0, Point(kp0.x, kp0.y), red, MARKER_CROSS, 20, 2);
+      //  drawMarker(img1, Point(kp1.x, kp1.y), red, MARKER_CROSS, 20, 2);
+      //}
+      //Size sz[2] = {imgs[p1].size(), imgs[p2].size()};
+      //Mat show(sz[0].height, sz[0].width+sz[1].width, CV_8UC3);
+      //Mat left(show, Rect(0, 0, sz[0].width, sz[0].height));
+      //Mat right(show, Rect(sz[0].width, 0, sz[1].width, sz[1].height));
+      //img0.copyTo(left);
+      //img1.copyTo(right);
+      //for(const auto& p : match_pairs[p1][p2]) {
+      //  const Keypoint& kp0 = keypoints[p1][p.first];
+      //  const Keypoint& kp1 = keypoints[p2][p.second];
+      //  line(show, Point(kp0.x, kp0.y), 
+      //       Point(sz[0].width+kp1.x, kp1.y), red, 2, 8);
+      //}
+      //imshow("exhaustive", show);
+      //waitKey(0);
       if(!panorama_mode) break;
     }
 }
 bool MATCHING::check_match_haar(const tuple<int, int, double>& mp, 
-                           size_t pic1, size_t pic2, double sec_mn) const {
+                           size_t p1, size_t p2, double sec_mn) const {
   const int& pj = get<1>(mp);
-  const auto& kj = keypoints[pic2][pj];
+  const auto& kj = keypoints[p2][pj];
   double fir = DBL_MAX, sec = DBL_MAX;
   int fir_i = -1;
-  #pragma omp parallel for
-  for(size_t pi = 0; pi<keypoints[pic1].size(); ++pi) {
-    const auto& ki = keypoints[pic1][pi];
+  //#pragma omp parallel for
+  for(size_t pi = 0; pi<keypoints[p1].size(); ++pi) {
+    const auto& ki = keypoints[p1][pi];
     Mat diff = ki.patch - kj.patch;
     double err = sum(diff.mul(diff))[0];
     if(err < fir) sec = fir, fir_i = pi, fir = err;
@@ -191,12 +192,12 @@ bool MATCHING::check_match_haar(const tuple<int, int, double>& mp,
   return fir_i == get<0>(mp) && fir < sec_mn * _para[1];
 }
 bool MATCHING::check_match_exhaustive(int target_i, int j, 
-                                      size_t pic1, size_t pic2) const {
-  const auto& kj = keypoints[pic2][j];
+                                      size_t p1, size_t p2) const {
+  const auto& kj = keypoints[p2][j];
   double min_err = DBL_MAX;
   int best_i = -1;
-  for(size_t i = 0; i<keypoints[pic1].size(); ++i) {
-    const auto& ki = keypoints[pic1][i];
+  for(size_t i = 0; i<keypoints[p1].size(); ++i) {
+    const auto& ki = keypoints[p1][i];
     Mat diff = kj.patch - ki.patch;
     double err = sum(diff.mul(diff))[0];
     if(err < min_err) {

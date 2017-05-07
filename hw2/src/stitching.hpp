@@ -6,7 +6,7 @@ public:
  STITCHING(const int& p_mode, const vector<double>& para, const vector<Mat>& i,
            const vector<vector<Keypoint>>& k,
            const vector<vector<vector<pair<int,int>>>>& m,
-           vector<vector<pair<double,double>>>& s)
+           vector<vector<Mat>>& s)
           : panorama_mode(p_mode), imgs(i), keypoints(k), match_pairs(m),
             shift(s), _para(para) {};
  void translation();
@@ -20,7 +20,7 @@ private:
   const vector<Mat>& imgs;
   const vector<vector<Keypoint>>& keypoints;
   const vector<vector<vector<pair<int,int>>>>& match_pairs;
-  vector<vector<pair<double,double>>>& shift;
+  vector<vector<Mat>>& shift;
   vector<double> _para;
 };
 

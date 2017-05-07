@@ -8,6 +8,8 @@ public:
             : _para(para), keypoints(k), imgs(i) {};
   void cylindrical();
   void no_projection();
+protected:
+  void set_focal_length(double);
 private:
   pair<double, double> projected_xy(double, double, double, double);
   vector<double> _para;

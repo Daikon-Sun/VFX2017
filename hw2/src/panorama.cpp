@@ -99,6 +99,7 @@ void PANORAMA::visualization() {
         _shift[pic][pic+1] *= _shift[pic-1][pic];
       double mnx = 0, mny = 0, mxx = _imgs[0].cols, mxy = _imgs[0].rows;
       vector<vector<vector<Point2d>>> new_pos(pic_num);
+      #pragma omp parallel for
       for(size_t pic = 1; pic<pic_num; ++pic) {
         new_pos[pic].resize(_imgs[pic].cols, vector<Point2d>(_imgs[pic].rows));
         for(int x = 0; x<_imgs[pic].cols; ++x)
@@ -107,6 +108,7 @@ void PANORAMA::visualization() {
             const double& nx = pos.at<double>(0, 0);
             const double& ny = pos.at<double>(1, 0);
             new_pos[pic][x][y] = {nx, ny};
+            #pragma critical
             mnx = min(mnx, nx);
             mxx = max(mxx, nx);
             mny = min(mny, ny);
@@ -115,6 +117,7 @@ void PANORAMA::visualization() {
       } 
       Mat show = Mat::zeros(mxy-mny, mxx-mnx, CV_8UC3);
       _imgs[0].copyTo(show(Rect(0, -mny, _imgs[0].cols, _imgs[0].rows)));
+      #pragma omp parallel for
       for(size_t pic = 1; pic<pic_num; ++pic)
         for(int x = 0; x<_imgs[pic].cols; ++x)
           for(int y = 0; y<_imgs[pic].rows; ++y) {

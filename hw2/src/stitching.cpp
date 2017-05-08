@@ -344,7 +344,7 @@ void STITCHING::autostitch() {
   auto en = ++order.begin();
   double R[pic_num][3] = {0};
   double K[pic_num][1] = {0};
-  K[order.begin()->first][0] = 750;
+  K[order.begin()->first][0] = 1350;
   for(; en != order.end();) {
     vector<int> group;
     for(auto st = order.begin(); st != en; ++st) group.push_back(st->first);
@@ -382,11 +382,11 @@ void STITCHING::autostitch() {
       }
     }
     Solver::Options options;
-    options.max_num_iterations = 3;
+    options.max_num_iterations = 10;
     options.linear_solver_type = ceres::DENSE_QR;
     options.minimizer_progress_to_stdout = true;
     Solver::Summary summary;
-    for(size_t iter = 0; iter < 3; ++iter) {
+    for(size_t iter = 0; iter < 30; ++iter) {
       Solve(options, &problem, &summary);
       loss_func->Reset(new ceres::HuberLoss(20000/(iter*1000+1)),
                            ceres::TAKE_OWNERSHIP);
@@ -402,7 +402,7 @@ void STITCHING::autostitch() {
   }
     
   vector<Mat> Rs(pic_num), Ks(pic_num), R_Ts(pic_num), Hs(pic_num);
-  #pragma omp parallel for
+  //#pragma omp parallel for
   for(size_t i = 0; i<pic_num; ++i) {
     Mat r = (Mat_<double>(3, 3) << 0, -R[i][2], R[i][1],
                                     R[i][2], 0, -R[i][0],
@@ -418,26 +418,26 @@ void STITCHING::autostitch() {
                                      0, 0, 1);
     transpose(Rs[i], R_Ts[i]);
   }
-  //for(size_t p1 = 0; p1<pic_num; ++p1) {
-  //  for(size_t p2 = p1+1; p2<pic_num; ++p2) {
-  //    for(auto& keypair : inners[p1][p2]) {
-  //      int k1, k2; tie(k1, k2) = keypair;
-  //      const auto& kp1 = keypoints[p1][k1];
-  //      const auto& kp2 = keypoints[p2][k2];
-  //      cerr << "GT1   " << kp1.x << " " << kp1.y << endl;
-  //      Mat pos21 = Ks[p1]*Rs[p1]*R_Ts[p2]*Ks[p2].inv()
-  //                 *(Mat_<double>(3, 1) << kp2.x, kp2.y, 1);
-  //      cerr << "PRED1 " << pos21.at<double>(0, 0) 
-  //           << " " << pos21.at<double>(1, 0) << endl;
+  for(size_t p1 = 0; p1<pic_num; ++p1) {
+    for(size_t p2 = p1+1; p2<pic_num; ++p2) {
+      for(auto& keypair : inners[p1][p2]) {
+        int k1, k2; tie(k1, k2) = keypair;
+        const auto& kp1 = keypoints[p1][k1];
+        const auto& kp2 = keypoints[p2][k2];
+        cerr << "GT1   " << kp1.x << " " << kp1.y << endl;
+        Mat pos21 = Ks[p1]*Rs[p1]*R_Ts[p2]*Ks[p2].inv()
+                   *(Mat_<double>(3, 1) << kp2.x, kp2.y, 1);
+        cerr << "PRED1 " << pos21.at<double>(0, 0) 
+             << " " << pos21.at<double>(1, 0) << endl;
 
-  //      cerr << "GT2   " << kp2.x << " " << kp2.y << endl;
-  //      Mat pos12 = Ks[p2]*Rs[p2]*R_Ts[p1]*Ks[p1].inv()
-  //                 *(Mat_<double>(3, 1) << kp1.x, kp1.y, 1);
-  //      cerr << "PRED2 " << pos12.at<double>(0, 0) 
-  //           << " " << pos12.at<double>(1, 0) << endl;
-  //    }
-  //  }
-  //}
+        cerr << "GT2   " << kp2.x << " " << kp2.y << endl;
+        Mat pos12 = Ks[p2]*Rs[p2]*R_Ts[p1]*Ks[p1].inv()
+                   *(Mat_<double>(3, 1) << kp1.x, kp1.y, 1);
+        cerr << "PRED2 " << pos12.at<double>(0, 0) 
+             << " " << pos12.at<double>(1, 0) << endl;
+      }
+    }
+  }
 
   head = order.begin()->first;
   Hs[head] = (Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
@@ -445,9 +445,10 @@ void STITCHING::autostitch() {
   double mnx = 0, mny = 0, mxx = imgs[head].cols, mxy = imgs[head].rows;
   vector<vector<vector<Point2d>>> new_pos(pic_num);
   vector<pair<int,int>> ord(order.begin(), order.end());
-  #pragma omp parallel for
+  //#pragma omp parallel for
   for(size_t ii = 0; ii<ord.size(); ++ii) {
     int j, i; tie(j, i) = ord[ii];
+    cerr << j << " " << i << endl;
     Hs[j] = Hs[i] * Ks[i] * Rs[i] * R_Ts[j] * Ks[j].inv();
     new_pos[j].resize(imgs[j].cols, vector<Point2d>(imgs[j].rows));
     for(int x = 0; x<imgs[j].cols; ++x)
@@ -456,7 +457,7 @@ void STITCHING::autostitch() {
         const double& nx = pos.at<double>(0, 0);
         const double& ny = pos.at<double>(1, 0);
         new_pos[j][x][y] = {nx, ny};
-        #pragma critical
+        //#pragma critical
         mnx = min(mnx, nx);
         mxx = max(mxx, nx);
         mny = min(mny, ny);

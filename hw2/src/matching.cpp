@@ -80,8 +80,8 @@ void MATCHING::HAAR() {
                 if(err < fir) sec = fir, fir_j = pj, fir = err;
                 else if(err < sec) sec = err;
               }
-              if(fir_j != -1 && sec != DBL_MAX) {
-                 //is_align(ki, keypoints[p2][fir_j], _para[2])) {
+              if(fir_j != -1 && sec != DBL_MAX &&
+                 is_align(ki, keypoints[p2][fir_j], _para[2])) {
                 #pragma omp critical
                 pre_match[p1][p2].emplace_back(pi, fir_j, fir);
                 all_sec.push_back(sec);
@@ -145,8 +145,8 @@ void MATCHING::exhaustive() {
             bestj = j;
           }
         }
-        if(bestj != -1 && check_match_exhaustive(i, bestj, p1, p2))
-           //is_align(ki, keypoints[pic+1][bestj], _para[0]))
+        if(bestj != -1 && check_match_exhaustive(i, bestj, p1, p2)
+           && is_align(ki, keypoints[p2][bestj], _para[0]))
           match_pairs[p1][p2].emplace_back(i, bestj);
       }
       if(!panorama_mode) break;

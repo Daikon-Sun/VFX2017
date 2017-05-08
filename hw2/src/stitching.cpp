@@ -1,4 +1,5 @@
 #include <eigen3/Eigen/Dense>
+//#include <eigen3/unsupported/Eigen/MatrixFunctions>
 #include <ceres/ceres.h>
 #include <opencv2/opencv.hpp>
 
@@ -185,6 +186,7 @@ void STITCHING::rotation() {
     }
 }
 //constexpr double MAX_RES = 100;
+constexpr double fac[11] = {1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800};
 struct BA {
   BA(double p1_x, double p1_y, double p2_x, double p2_y) 
     : p1_x(p1_x), p1_y(p1_y), p2_x(p2_x), p2_y(p2_y) {}
@@ -196,15 +198,29 @@ struct BA {
                   const T* const K2,
                   T* residuals) const {
     Eigen::Matrix<T, 3, 1> pos, pred;
-    Eigen::Matrix<T, 3, 3> Ri, Rj_T, Ki, Kj_inv;
+    Eigen::Matrix<T, 3, 3> Ri, Rj, Ki, Kj_inv, RI, RJ, Ris, Rjs;
     pos    << T(p2_x), T(p2_y), T(1);
-    Ri     <<          T(1), T(exp(-R1[2])),  T(exp(R1[1])),
-              T(exp(R1[2])),           T(1), T(exp(-R1[0])),
-             T(exp(-R1[1])),  T(exp(R1[0])),           T(1);
+    Ri     <<     T(0), T(-R1[2]),  T(R1[1]),
+              T(R1[2]),      T(0), T(-R1[0]),
+             T(-R1[1]),  T(R1[0]),      T(0);
+    Rj   <<       T(0),  T(-R2[2]), T(R2[1]),
+             T(R2[2]),      T(0),  T(-R2[0]),
+              T(-R2[1]), T(R2[0]),     T(0);
+    RI  << T(1), T(0), T(0), T(0), T(1), T(0), T(0), T(0), T(1);
+    Ris << T(1), T(0), T(0), T(0), T(1), T(0), T(0), T(0), T(1);
+    RJ  << T(1), T(0), T(0), T(0), T(1), T(0), T(0), T(0), T(1);
+    Rjs << T(1), T(0), T(0), T(0), T(1), T(0), T(0), T(0), T(1);
+    for(int i = 1; i<=10; ++i) {
+      Ris *= Ri;
+      RI += Ris / T(fac[i]);
+      Rjs *= Rj;
+      RJ += Rjs / T(fac[i]);
+    }
 
-    Rj_T   <<          T(1),  T(exp(R2[2])), T(exp(-R2[1])),
-             T(exp(-R2[2])),           T(1),  T(exp(R2[0])),
-              T(exp(R2[1])), T(exp(-R2[0])),           T(1);
+    //Ri = Ri.exp();
+
+    //Rj_T = Rj_T.exp().transpose();
+    //Rj_T = Rj_T.transpose();
 
     Ki     << K1[0],  T(0), T(0),
                T(0), K1[0], T(0),
@@ -213,7 +229,7 @@ struct BA {
     Kj_inv << T(1.0)/K2[0],         T(0), T(0),
                       T(0), T(1.0)/K2[0], T(0),
                       T(0),         T(0), T(1);
-    pred = Ki * Ri * Rj_T * Kj_inv * pos;
+    pred = Ki * RI * RJ.transpose() * Kj_inv * pos;
     residuals[0] = T(sqrt((pred(0, 0) - p1_x)*(pred(0, 0) - p1_x) +
                           (pred(1, 0) - p1_y)*(pred(1, 0) - p1_y)));
     return true;
@@ -226,7 +242,7 @@ struct BA {
    }
   double p1_x, p1_y, p2_x, p2_y;
 };
-constexpr int M = 1;
+constexpr int M = 6;
 void STITCHING::autostitch() {
   cerr << __func__ << endl;
   size_t pic_num = imgs.size();
@@ -235,9 +251,10 @@ void STITCHING::autostitch() {
   shift.resize(pic_num, vector<Mat>(pic_num));
   vector<vector<vector<pair<int,int>>>>
     inners(pic_num, vector<vector<pair<int,int>>>(pic_num));
-  
+  //#pragma omp parallel for 
   for(size_t p1 = 0; p1<pic_num; ++p1) {
     for(size_t p2 = p1+1; p2<pic_num; ++p2) {
+      if(match_pairs[p1][p2].empty()) continue;
       vector<Point2f> src, dst;      
       for(const auto& mp : match_pairs[p1][p2]) {
         int k1, k2; tie(k1, k2) = mp;
@@ -249,6 +266,7 @@ void STITCHING::autostitch() {
       Mat msk;
       shift[p1][p2] = findHomography(src, dst, CV_RANSAC, _para[1], msk);
       int sm = sum(msk)[0];
+      cerr << p1 << " " << p2 << " " << sm << endl;
       in_cnt[p1][p2] = {sm, p2};
       in_cnt[p2][p1] = {sm, p1};
       for(size_t j = 0; j<msk.rows; ++j) if(msk.at<uchar>(j, 0))
@@ -256,11 +274,12 @@ void STITCHING::autostitch() {
       if(!panorama_mode) break;
     }
   }
+  //cerr << "done1" << endl;
   //for(size_t pic = 0; pic+1<keypoints.size(); ++pic) {
   //   const auto red = Scalar(0, 0, 255);
   //   Mat img0 = imgs[pic].clone();
   //   Mat img1 = imgs[pic+1].clone();
-  //   for (const auto& p : inners[pic][pic+1]) {
+  //   for (const auto& p : match_pairs[pic][pic+1]) {
   //     const Keypoint& kp0 = keypoints[pic][p.first];
   //     const Keypoint& kp1 = keypoints[pic+1][p.second];
   //     drawMarker(img0, Point(kp0.x, kp0.y), red, MARKER_CROSS, 20, 2);
@@ -273,7 +292,7 @@ void STITCHING::autostitch() {
   //   Mat right(show, Rect(sz[0].width, 0, sz[1].width, sz[1].height));
   //   img0.copyTo(left);
   //   img1.copyTo(right);
-  //   for(const auto& p : inners[pic][pic+1]) {
+  //   for(const auto& p : match_pairs[pic][pic+1]) {
   //     const Keypoint& kp0 = keypoints[pic][p.first];
   //     const Keypoint& kp1 = keypoints[pic+1][p.second];
   //     line(show, Point(kp0.x, kp0.y), 
@@ -283,6 +302,7 @@ void STITCHING::autostitch() {
   //   imshow("process", show);
   //   waitKey(0);
   //}
+  //cerr << "done2" << endl;
   vector<set<int>> edges(pic_num);
   vector<pair<int,int>> cnt_all(pic_num);
   for(size_t i = 0; i<pic_num; ++i) {
@@ -338,7 +358,7 @@ void STITCHING::autostitch() {
       new ceres::LossFunctionWrapper(new ceres::HuberLoss(200000),
                                      ceres::TAKE_OWNERSHIP);
     for(size_t i = 0; i<group.size(); ++i) {
-      for(size_t j = i+1; j<group.size(); ++j) if(i != j) {
+      for(size_t j = 0; j<group.size(); ++j) if(i != j) {
         int p1 = group[i], p2 = group[j];
         if(p1 > p2) {
           for(auto& keypair : inners[p2][p1]) {
@@ -355,22 +375,20 @@ void STITCHING::autostitch() {
             const auto& kp1 = keypoints[p1][k1];
             const auto& kp2 = keypoints[p2][k2];
             CostFunction* cost_func = BA::Create(kp1.x, kp1.y, kp2.x, kp2.y);
-            problem.AddResidualBlock(cost_func, loss_func,
+            problem.AddResidualBlock(cost_func, NULL,
                                      R[p1], K[p1], R[p2], K[p2]);
           }
         }
       }
     }
     Solver::Options options;
-    options.max_num_iterations = 300;
-    //options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    options.max_num_iterations = 3;
     options.linear_solver_type = ceres::DENSE_QR;
     options.minimizer_progress_to_stdout = true;
     Solver::Summary summary;
-    Solve(options, &problem, &summary);
-    for(size_t iter = 0; iter < 100; ++iter) {
+    for(size_t iter = 0; iter < 3; ++iter) {
       Solve(options, &problem, &summary);
-      loss_func->Reset(new ceres::HuberLoss(200000/(iter*100+1)),
+      loss_func->Reset(new ceres::HuberLoss(20000/(iter*1000+1)),
                            ceres::TAKE_OWNERSHIP);
     }
     cout << summary.BriefReport() << "\n";
@@ -386,52 +404,51 @@ void STITCHING::autostitch() {
   vector<Mat> Rs(pic_num), Ks(pic_num), R_Ts(pic_num), Hs(pic_num);
   #pragma omp parallel for
   for(size_t i = 0; i<pic_num; ++i) {
-    Rs[i] = (Mat_<double>(3, 3) << 1, exp(-R[i][2]), exp(R[i][1]),
-                                    exp(R[i][2]), 1, exp(-R[i][0]),
-                                    exp(-R[i][1]), exp(R[i][0]), 1);
+    Mat r = (Mat_<double>(3, 3) << 0, -R[i][2], R[i][1],
+                                    R[i][2], 0, -R[i][0],
+                                    -R[i][1], R[i][0], 0);
+    Rs[i] = (Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
+    Mat rs = Rs[i].clone();
+    for(int j = 1; j<=10; ++j) {
+      rs *= r;
+      Rs[i] = Rs[i] + rs / fac[j];
+    }
     Ks[i] = (Mat_<double>(3, 3) << K[i][0], 0, 0,
                                      0, K[i][0], 0,
                                      0, 0, 1);
     transpose(Rs[i], R_Ts[i]);
   }
+  //for(size_t p1 = 0; p1<pic_num; ++p1) {
+  //  for(size_t p2 = p1+1; p2<pic_num; ++p2) {
+  //    for(auto& keypair : inners[p1][p2]) {
+  //      int k1, k2; tie(k1, k2) = keypair;
+  //      const auto& kp1 = keypoints[p1][k1];
+  //      const auto& kp2 = keypoints[p2][k2];
+  //      cerr << "GT1   " << kp1.x << " " << kp1.y << endl;
+  //      Mat pos21 = Ks[p1]*Rs[p1]*R_Ts[p2]*Ks[p2].inv()
+  //                 *(Mat_<double>(3, 1) << kp2.x, kp2.y, 1);
+  //      cerr << "PRED1 " << pos21.at<double>(0, 0) 
+  //           << " " << pos21.at<double>(1, 0) << endl;
 
-  for(size_t p1 = 0; p1<pic_num; ++p1) {
-    for(size_t p2 = p1+1; p2<pic_num; ++p2) {
-      //Mat tmp = Ks[p2]*R_Ts[p2].inv()*Rs[p1].inv()*Ks[p1].inv();
-      //cerr << tmp << endl;
-      for(auto& keypair : inners[p1][p2]) {
-        int k1, k2; tie(k1, k2) = keypair;
-        const auto& kp1 = keypoints[p1][k1];
-        const auto& kp2 = keypoints[p2][k2];
-        cerr << "GT1   " << kp1.x << " " << kp1.y << endl;
-        Mat pos21 = Ks[p1]*Rs[p1]*R_Ts[p2]*Ks[p2].inv()
-                   *(Mat_<double>(3, 1) << kp2.x, kp2.y, 1);
-        cerr << "PRED1 " << pos21.at<double>(0, 0) 
-             << " " << pos21.at<double>(1, 0) << endl;
-
-        cerr << "GT2   " << kp2.x << " " << kp2.y << endl;
-        Mat pos12 = Ks[p2]*Rs[p2]*R_Ts[p1]*Ks[p1].inv()
-                   *(Mat_<double>(3, 1) << kp1.x, kp1.y, 1);
-        cerr << "PRED2 " << pos12.at<double>(0, 0) 
-             << " " << pos12.at<double>(1, 0) << endl;
-      }
-    }
-  }
+  //      cerr << "GT2   " << kp2.x << " " << kp2.y << endl;
+  //      Mat pos12 = Ks[p2]*Rs[p2]*R_Ts[p1]*Ks[p1].inv()
+  //                 *(Mat_<double>(3, 1) << kp1.x, kp1.y, 1);
+  //      cerr << "PRED2 " << pos12.at<double>(0, 0) 
+  //           << " " << pos12.at<double>(1, 0) << endl;
+  //    }
+  //  }
+  //}
 
   head = order.begin()->first;
-  //head = 0;
-  //cerr << "head " << head << endl;
   Hs[head] = (Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
   order.pop_front();
   double mnx = 0, mny = 0, mxx = imgs[head].cols, mxy = imgs[head].rows;
   vector<vector<vector<Point2d>>> new_pos(pic_num);
   vector<pair<int,int>> ord(order.begin(), order.end());
-  //ord = {{1, 0}};
   #pragma omp parallel for
   for(size_t ii = 0; ii<ord.size(); ++ii) {
     int j, i; tie(j, i) = ord[ii];
     Hs[j] = Hs[i] * Ks[i] * Rs[i] * R_Ts[j] * Ks[j].inv();
-    //else Hs[j] = Hs[i] * Ks[i] * R_Ts[i].inv() * Rs[j].inv() * Ks[j].inv();
     new_pos[j].resize(imgs[j].cols, vector<Point2d>(imgs[j].rows));
     for(int x = 0; x<imgs[j].cols; ++x)
       for(int y = 0; y<imgs[j].rows; ++y) {
@@ -448,18 +465,16 @@ void STITCHING::autostitch() {
   }
   cerr << mnx << " " << mny << " " << mxx << " " << mxy << endl;
   Mat show = Mat::zeros(mxy-mny+1, mxx-mnx+1, CV_8UC3);
-  imgs[head].copyTo(show(Rect(-mnx, -mny, imgs[head].cols, imgs[head].rows)));
   #pragma omp parallel for
   for(size_t ii = 0; ii<ord.size(); ++ii) {
     int i; tie(i, ignore) = ord[ii];
     for(int x = 0; x<imgs[i].cols; ++x)
       for(int y = 0; y<imgs[i].rows; ++y) {
         new_pos[i][x][y] -= {mnx, mny};
-        //cerr << show.size() << endl;
-        //cerr << new_pos[i][x][y] << endl;
         show.at<Vec3b>(new_pos[i][x][y]) = imgs[i].at<Vec3b>(y, x);
       }
   }
+  imgs[head].copyTo(show(Rect(-mnx, -mny, imgs[head].cols, imgs[head].rows)));
   namedWindow("auto", WINDOW_NORMAL);
   imshow("auto", show);
   waitKey(0);

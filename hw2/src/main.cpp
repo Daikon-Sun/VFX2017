@@ -22,7 +22,7 @@ int panorama_mode = 0;
 int detection_mode = 0;
 
 int matching_mode = 1;
-Paras all_matching_para = {{200}, {10, 0.65, 200}};
+Paras all_matching_para = {{50}, {10, 0.65, 50}};
 vector<int> matching_cnt = {0, 3};
 
 int projection_mode = 1;

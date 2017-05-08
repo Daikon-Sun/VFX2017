@@ -38,7 +38,7 @@ PANORAMA::PANORAMA(const string& in_list, const string& out_jpg,
   string fname;
   while(ifs >> fname) {
     Mat tmp = imread(fname, IMREAD_COLOR);
-    resize(tmp, tmp, Size(), 0.25, 0.25);
+    resize(tmp, tmp, Size(), 0.2, 0.2);
     _imgs.push_back(tmp.clone());
   }
 };
@@ -90,7 +90,7 @@ void PANORAMA::visualization() {
       set_focal_length(f); 
       cylindrical();
     }
-    if(_stitching_mode <= 3) {
+    if(_stitching_mode <= 2) {
       for(size_t pic = 1; pic+1<pic_num; ++pic)
         _shift[pic][pic+1] *= _shift[pic-1][pic];
       double mnx = 0, mny = 0, mxx = _imgs[0].cols, mxy = _imgs[0].rows;

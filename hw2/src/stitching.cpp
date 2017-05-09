@@ -1,5 +1,5 @@
 #include <eigen3/Eigen/Dense>
-//#include <eigen3/unsupported/Eigen/MatrixFunctions>
+#include <eigen3/unsupported/Eigen/MatrixFunctions>
 #include <ceres/ceres.h>
 #include <opencv2/opencv.hpp>
 
@@ -198,29 +198,30 @@ struct BA {
                   const T* const K2,
                   T* residuals) const {
     Eigen::Matrix<T, 3, 1> pos, pred;
-    Eigen::Matrix<T, 3, 3> Ri, Rj, Ki, Kj_inv, RI, RJ, Ris, Rjs;
     pos    << T(p2_x), T(p2_y), T(1);
+
+    Eigen::Matrix<T, 3, 3> Ri, Rj, Ki, Kj_inv;// RI, RJ, Ris, Rjs;
+
+    T ni = sqrt(R1[0]*R1[0] + R1[1]*R1[1] + R1[2]*R1[2]);
+    T nj = sqrt(R2[0]*R2[0] + R2[1]*R2[1] + R2[2]*R2[2]);
+
     Ri     <<     T(0), T(-R1[2]),  T(R1[1]),
               T(R1[2]),      T(0), T(-R1[0]),
              T(-R1[1]),  T(R1[0]),      T(0);
-    Rj   <<       T(0),  T(-R2[2]), T(R2[1]),
-             T(R2[2]),      T(0),  T(-R2[0]),
-              T(-R2[1]), T(R2[0]),     T(0);
-    RI  << T(1), T(0), T(0), T(0), T(1), T(0), T(0), T(0), T(1);
-    Ris << T(1), T(0), T(0), T(0), T(1), T(0), T(0), T(0), T(1);
-    RJ  << T(1), T(0), T(0), T(0), T(1), T(0), T(0), T(0), T(1);
-    Rjs << T(1), T(0), T(0), T(0), T(1), T(0), T(0), T(0), T(1);
-    for(int i = 1; i<=10; ++i) {
-      Ris *= Ri;
-      RI += Ris / T(fac[i]);
-      Rjs *= Rj;
-      RJ += Rjs / T(fac[i]);
-    }
+    Ri /= ni;
+    Ri = sin(ni) * Ri + (T(1)-cos(ni)) * Ri * Ri;
+    Ri(0, 0) += T(1);
+    Ri(1, 1) += T(1);
+    Ri(2, 2) += T(1);
 
-    //Ri = Ri.exp();
-
-    //Rj_T = Rj_T.exp().transpose();
-    //Rj_T = Rj_T.transpose();
+    Rj   <<      T(0), T(-R2[2]), T(R2[1]),
+             T(R2[2]),      T(0),T(-R2[0]),
+            T(-R2[1]),  T(R2[0]),     T(0);
+    Rj /= nj;
+    Rj = sin(nj) * Rj + (T(1)-cos(nj)) * Rj * Rj;
+    Rj(0, 0) += T(1);
+    Rj(1, 1) += T(1);
+    Rj(2, 2) += T(1);
 
     Ki     << K1[0],  T(0), T(0),
                T(0), K1[0], T(0),
@@ -229,7 +230,7 @@ struct BA {
     Kj_inv << T(1.0)/K2[0],         T(0), T(0),
                       T(0), T(1.0)/K2[0], T(0),
                       T(0),         T(0), T(1);
-    pred = Ki * RI * RJ.transpose() * Kj_inv * pos;
+    pred = Ki * Ri * Rj.transpose() * Kj_inv * pos;
     residuals[0] = T(sqrt((pred(0, 0) - p1_x)*(pred(0, 0) - p1_x) +
                           (pred(1, 0) - p1_y)*(pred(1, 0) - p1_y)));
     return true;
@@ -343,8 +344,9 @@ void STITCHING::autostitch() {
   
   auto en = ++order.begin();
   double R[pic_num][3] = {0};
+  for(size_t i = 0; i<pic_num; ++i) fill_n(R[i], 3, 1e-10);
   double K[pic_num][1] = {0};
-  K[order.begin()->first][0] = 1350;
+  K[order.begin()->first][0] = 1600;
   for(; en != order.end();) {
     vector<int> group;
     for(auto st = order.begin(); st != en; ++st) group.push_back(st->first);
@@ -382,16 +384,17 @@ void STITCHING::autostitch() {
       }
     }
     Solver::Options options;
-    options.max_num_iterations = 10;
-    options.linear_solver_type = ceres::DENSE_QR;
+    options.max_num_iterations = 1000;
+    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
     options.minimizer_progress_to_stdout = true;
     Solver::Summary summary;
-    for(size_t iter = 0; iter < 30; ++iter) {
-      Solve(options, &problem, &summary);
-      loss_func->Reset(new ceres::HuberLoss(20000/(iter*1000+1)),
-                           ceres::TAKE_OWNERSHIP);
-    }
-    cout << summary.BriefReport() << "\n";
+    Solve(options, &problem, &summary);
+    //for(size_t iter = 0; iter < 30; ++iter) {
+    //  Solve(options, &problem, &summary);
+    //  loss_func->Reset(new ceres::HuberLoss(20000/(iter*1000+1)),
+    //                       ceres::TAKE_OWNERSHIP);
+    //}
+    cout << summary.FullReport() << "\n";
   }
 
   for(size_t i = 0; i<pic_num; ++i) {
@@ -407,16 +410,16 @@ void STITCHING::autostitch() {
     Mat r = (Mat_<double>(3, 3) << 0, -R[i][2], R[i][1],
                                     R[i][2], 0, -R[i][0],
                                     -R[i][1], R[i][0], 0);
-    Rs[i] = (Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
-    Mat rs = Rs[i].clone();
-    for(int j = 1; j<=10; ++j) {
-      rs *= r;
-      Rs[i] = Rs[i] + rs / fac[j];
-    }
+    double norm = sqrt(R[i][0]*R[i][0] + R[i][1]*R[i][1] + R[i][2]*R[i][2]);
+    r = r / norm;
+    Rs[i] = sin(norm) * r + (1.0-cos(norm)) * r * r;
+    Rs[i].at<double>(0, 0) += 1;
+    Rs[i].at<double>(1, 1) += 1;
+    Rs[i].at<double>(2, 2) += 1;
+    transpose(Rs[i], R_Ts[i]);
     Ks[i] = (Mat_<double>(3, 3) << K[i][0], 0, 0,
                                      0, K[i][0], 0,
                                      0, 0, 1);
-    transpose(Rs[i], R_Ts[i]);
   }
   for(size_t p1 = 0; p1<pic_num; ++p1) {
     for(size_t p2 = p1+1; p2<pic_num; ++p2) {
@@ -445,7 +448,6 @@ void STITCHING::autostitch() {
   double mnx = 0, mny = 0, mxx = imgs[head].cols, mxy = imgs[head].rows;
   vector<vector<vector<Point2d>>> new_pos(pic_num);
   vector<pair<int,int>> ord(order.begin(), order.end());
-  //#pragma omp parallel for
   for(size_t ii = 0; ii<ord.size(); ++ii) {
     int j, i; tie(j, i) = ord[ii];
     cerr << j << " " << i << endl;
@@ -457,7 +459,6 @@ void STITCHING::autostitch() {
         const double& nx = pos.at<double>(0, 0);
         const double& ny = pos.at<double>(1, 0);
         new_pos[j][x][y] = {nx, ny};
-        //#pragma critical
         mnx = min(mnx, nx);
         mxx = max(mxx, nx);
         mny = min(mny, ny);

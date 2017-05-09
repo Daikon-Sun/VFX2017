@@ -40,11 +40,13 @@ STITCHING::cylindrical_projection(double f, double w, double h,
 }
 void STITCHING::translation() { 
   cerr << __func__;
+  gen_order();
   size_t pic_num = imgs.size();
   shift.clear();
   shift.resize(pic_num, vector<Mat>(pic_num));
   #pragma omp parallel for
-  for(size_t p1 = 0; p1<pic_num; ++p1)
+  for(size_t p1 = 0; p1<pic_num; ++p1) {
+    shift[p1][p1] = Mat::eye(3, 3, CV_64FC1);
     for(size_t p2 = p1+1; p2<pic_num; ++p2) {
       int best_cnt = 0;
       double best_sx, best_sy;
@@ -68,8 +70,10 @@ void STITCHING::translation() {
       shift[p1][p2] = (Mat_<double>(3, 3) << 1, 0, best_sx,
                                              0, 1, best_sy,
                                              0, 0,       1);
+      shift[p2][p1] = shift[p1][p2].inv();
       if(!panorama_mode) break;
     }
+  }
 }
 void STITCHING::focal_length() {
   cerr << __func__;
@@ -191,11 +195,11 @@ void STITCHING::homography() {
   vector<vector<pair<int, int>>> in_cnt(pic_num, vector<pair<int,int>>(pic_num));
   shift.clear();
   shift.resize(pic_num, vector<Mat>(pic_num));
-  #pragma omp parallel for 
+  //#pragma omp parallel for 
   for(size_t p1 = 0; p1<pic_num; ++p1) {
     shift[p1][p1] = Mat::eye(3, 3, CV_64FC1);
     for(size_t p2 = p1+1; p2<pic_num; ++p2) {
-      if(match_pairs[p1][p2].empty()) continue;
+      if(match_pairs[p1][p2].size() < 5) continue;
       vector<Point2f> src, dst;      
       for(const auto& mp : match_pairs[p1][p2]) {
         int k1, k2; tie(k1, k2) = mp;
@@ -204,11 +208,41 @@ void STITCHING::homography() {
         src.emplace_back(kp2.x, kp2.y);
         dst.emplace_back(kp1.x, kp1.y);
       }
-      shift[p1][p2] = findHomography(src, dst, CV_RANSAC, _para[0]);
+      Mat msk;
+      shift[p1][p2] = findHomography(src, dst, CV_RANSAC, _para[0], msk);
+      if(shift[p1][p2].empty()) continue;
       shift[p2][p1] = shift[p1][p2].inv();
       if(!panorama_mode) break;
     }
   }
+	for(size_t pic = 0; pic+1<keypoints.size(); ++pic) {
+		 const auto red = Scalar(0, 0, 255);
+		 Mat img0 = imgs[pic].clone();
+		 Mat img1 = imgs[pic+1].clone();
+		 for (const auto& p : match_pairs[pic][pic+1]) {
+			 const Keypoint& kp0 = keypoints[pic][p.first];
+			 const Keypoint& kp1 = keypoints[pic+1][p.second];
+			 drawMarker(img0, Point(kp0.x, kp0.y), red, MARKER_CROSS, 20, 2);
+			 drawMarker(img1, Point(kp1.x, kp1.y), red, MARKER_CROSS, 20, 2);
+		 }
+		 Size sz[2];
+		 for(size_t i = 0; i<2; ++i) sz[i] = imgs[pic+i].size();
+		 Mat show(sz[0].height, sz[0].width+sz[1].width, CV_8UC3);
+		 Mat left(show, Rect(0, 0, sz[0].width, sz[0].height));
+		 Mat right(show, Rect(sz[0].width, 0, sz[1].width, sz[1].height));
+		 img0.copyTo(left);
+		 img1.copyTo(right);
+		 for(const auto& p : match_pairs[pic][pic+1]) {
+			 const Keypoint& kp0 = keypoints[pic][p.first];
+			 const Keypoint& kp1 = keypoints[pic+1][p.second];
+			 line(show, Point(kp0.x, kp0.y), 
+						Point(sz[0].width+kp1.x, kp1.y), red, 2, 8);
+		 }
+		 namedWindow("process", WINDOW_NORMAL);
+		 imshow("process", show);
+		 waitKey(0);
+	}
+
 }
 struct BA {
   BA(double p1_x, double p1_y, double p2_x, double p2_y) 
@@ -316,7 +350,7 @@ void STITCHING::gen_order() {
     while(!pq.empty()) {
       int u, p; tie(ignore, u, p) = pq.top(); pq.pop();
       ord.emplace_back(u, p);
-      cnt_all[u].first = 0;
+      cnt_all[u].first = -1;
       ++finish_cnt;
       for(auto v : edges[u]) if(!vis[v]) {
         vis[v] = true;
@@ -341,7 +375,9 @@ void STITCHING::autostitch() {
   double R[pic_num][3] = {0};
   for(size_t i = 0; i<pic_num; ++i) fill_n(R[i], 3, 1e-10);
   double K[pic_num][1] = {0};
+  //for(size_t i = 0; i<pic_num; ++i) fill_n(K[i], 1, _para[1]);
   for(const auto& ord : order) {
+    //size_t en = ord.size()-1;
     size_t en = 1;
     K[ord[0].first][0] = _para[1];
     while(en < ord.size()) {
@@ -354,7 +390,7 @@ void STITCHING::autostitch() {
 
       Problem problem;
       ceres::LossFunctionWrapper* loss_func =
-        new ceres::LossFunctionWrapper(new ceres::HuberLoss(10001),
+        new ceres::LossFunctionWrapper(new ceres::HuberLoss(100001),
                                        ceres::TAKE_OWNERSHIP);
       for(size_t i = 0; i<group.size(); ++i) {
         for(size_t j = 0; j<group.size(); ++j) if(i != j) {
@@ -371,15 +407,18 @@ void STITCHING::autostitch() {
           }
         }
       }
+      const int tot_iter = 100, max_iter = 100;
       Solver::Options options;
-      options.max_num_iterations = 100;
+      options.max_num_iterations = max_iter;
       options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
       options.minimizer_progress_to_stdout = true;
       Solver::Summary summary;
-      for(size_t iter = 0; iter < 10; ++iter) {
+      for(size_t iter = 0; iter < tot_iter; ++iter) {
         Solve(options, &problem, &summary);
-        loss_func->Reset(new ceres::HuberLoss(10001/(iter*10+1)),
-                             ceres::TAKE_OWNERSHIP);
+        loss_func->Reset(
+            new ceres::HuberLoss(100001/(iter*(10000.0/tot_iter/max_iter)+1)),
+            ceres::TAKE_OWNERSHIP
+        );
       }
       cerr << summary.FullReport() << endl;
     }
@@ -404,6 +443,28 @@ void STITCHING::autostitch() {
                                      0, K[i][0], 0,
                                      0, 0, 1);
   }
+  for(size_t p1 = 0; p1<pic_num; ++p1)
+    for(size_t p2 = p1+1; p2<pic_num; ++p2)
+      for(auto& keypair : inners[p1][p2]) {
+        int k1, k2; tie(k1, k2) = keypair;
+        const auto& kp1 = keypoints[p1][k1];
+        const auto& kp2 = keypoints[p2][k2];
+        cerr << "GT1   " << kp1.x << " " << kp1.y << endl;
+        Mat pos21 = Ks[p1]*Rs[p1]*R_Ts[p2]*Ks[p2].inv()
+                   *(Mat_<double>(3, 1) << kp2.x, kp2.y, 1);
+		    pos21.at<double>(0, 0) /= pos21.at<double>(2, 0);	
+		    pos21.at<double>(1, 0) /= pos21.at<double>(2, 0);	
+        cerr << "PRED1 " << pos21.at<double>(0, 0) 
+             << " " << pos21.at<double>(1, 0) << endl;
+
+        cerr << "GT2   " << kp2.x << " " << kp2.y << endl;
+        Mat pos12 = Ks[p2]*Rs[p2]*R_Ts[p1]*Ks[p1].inv()
+                   *(Mat_<double>(3, 1) << kp1.x, kp1.y, 1);
+		    pos12.at<double>(0, 0) /= pos12.at<double>(2, 0);	
+		    pos12.at<double>(1, 0) /= pos12.at<double>(2, 0);	
+        cerr << "PRED2 " << pos12.at<double>(0, 0) 
+             << " " << pos12.at<double>(1, 0) << endl;
+      }
   for(const auto& ord : order) {
     int root = ord[0].first;
     for(auto it = ++ord.begin(); it != ord.end(); ++it) {

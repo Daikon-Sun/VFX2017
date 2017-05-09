@@ -90,41 +90,38 @@ void PANORAMA::visualization() {
       set_focal_length(f); 
       cylindrical();
     }
-    if(_stitching_mode <= 2) {
+    if(_stitching_mode <= 3) {
       for(size_t pic = 1; pic+1<pic_num; ++pic)
         _shift[pic][pic+1] *= _shift[pic-1][pic];
-      double mnx = 0, mny = 0, mxx = _imgs[0].cols, mxy = _imgs[0].rows;
-      vector<vector<vector<Point2d>>> new_pos(pic_num);
-      #pragma omp parallel for
+      //vector<vector<vector<Point2d>>> new_pos(pic_num);
+      //#pragma omp parallel for
+      //for(size_t pic = 1; pic<pic_num; ++pic) {
+      //  new_pos[pic].resize(_imgs[pic].cols, vector<Point2d>(_imgs[pic].rows));
+      //  for(int x = 0; x<_imgs[pic].cols; ++x)
+      //    for(int y = 0; y<_imgs[pic].rows; ++y) {
+      //      Mat pos = _shift[pic-1][pic] * (Mat_<double>(3, 1) << x, y, 1);
+      //      const double& nx = pos.at<double>(0, 0);
+      //      const double& ny = pos.at<double>(1, 0);
+      //      new_pos[pic][x][y] = {nx, ny};
+      //      #pragma critical
+      //      mnx = min(mnx, nx);
+      //      mxx = max(mxx, nx);
+      //      mny = min(mny, ny);
+      //      mxy = max(mxy, ny);
+      //    }
+      //} 
+      Mat show = Mat::zeros(1200, 1200, CV_8UC3);
+      Mat tmp = _imgs[0] / _imgs.size();
+      tmp.copyTo(show(Rect(0, 0, _imgs[0].cols, _imgs[0].rows)));
       for(size_t pic = 1; pic<pic_num; ++pic) {
-        new_pos[pic].resize(_imgs[pic].cols, vector<Point2d>(_imgs[pic].rows));
-        for(int x = 0; x<_imgs[pic].cols; ++x)
-          for(int y = 0; y<_imgs[pic].rows; ++y) {
-            Mat pos = _shift[pic-1][pic] * (Mat_<double>(3, 1) << x, y, 1);
-            const double& nx = pos.at<double>(0, 0);
-            const double& ny = pos.at<double>(1, 0);
-            new_pos[pic][x][y] = {nx, ny};
-            #pragma critical
-            mnx = min(mnx, nx);
-            mxx = max(mxx, nx);
-            mny = min(mny, ny);
-            mxy = max(mxy, ny);
-          }
-      } 
-      Mat show = Mat::zeros(mxy-mny, mxx-mnx, CV_8UC3);
-      Mat tmp = _imgs[0].clone();
-      tmp = tmp / 2;
-      tmp.copyTo(show(Rect(0, -mny, _imgs[0].cols, _imgs[0].rows)));
-      #pragma omp parallel for
-      for(size_t pic = 1; pic<pic_num; ++pic)
-        for(int x = 0; x<_imgs[pic].cols; ++x)
-          for(int y = 0; y<_imgs[pic].rows; ++y) {
-            new_pos[pic][x][y] -= {mnx, mny};
-            show.at<Vec3b>(new_pos[pic][x][y]) += _imgs[pic].at<Vec3b>(y, x) / 2;
-          }
-      imwrite(_out_jpg, show);
+        Mat res;
+        warpPerspective(_imgs[pic], res, _shift[pic-1][pic], Size(1200, 1200));
+        cerr << res.size() << endl;
+        show += res/_imgs.size();
+      }
       namedWindow("visualize", WINDOW_NORMAL);
       imshow("visualize", show);
+      imwrite(_out_jpg, show);
       waitKey(0);
     }
   } else cerr << "not in mode O(n)!" << endl;

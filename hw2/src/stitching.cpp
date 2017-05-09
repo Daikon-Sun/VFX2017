@@ -266,7 +266,19 @@ void STITCHING::autostitch() {
       Mat msk;
       shift[p1][p2] = findHomography(src, dst, CV_RANSAC, _para[1], msk);
       int sm = sum(msk)[0];
-      cerr << p1 << " " << p2 << " " << sm << endl;
+      //cerr << shift[p1][p2] << endl;
+      //cerr << msk << endl;
+      //cerr << p1 << " " << p2 << " " << match_pairs[p1][p2].size() 
+      //     << " " << sm << endl;
+      //for(const auto& mp : match_pairs[p1][p2]) {
+      //  int k1, k2; tie(k1, k2) = mp;
+      //  const auto& kp1 = keypoints[p1][k1];
+      //  const auto& kp2 = keypoints[p2][k2];
+      //  Mat pos = shift[p1][p2] *(Mat_<double>(3, 1) << kp2.x, kp2.y, 1);
+      //  cerr << "========================" << endl;
+      //  cerr << kp1.x << " " << kp1.y << endl;
+      //  cerr << pos.at<double>(0, 0) << " " << pos.at<double>(1, 0) << endl;
+      //}
       in_cnt[p1][p2] = {sm, p2};
       in_cnt[p2][p1] = {sm, p1};
       for(size_t j = 0; j<msk.rows; ++j) if(msk.at<uchar>(j, 0))
@@ -427,8 +439,9 @@ void STITCHING::autostitch() {
         const auto& kp1 = keypoints[p1][k1];
         const auto& kp2 = keypoints[p2][k2];
         cerr << "GT1   " << kp1.x << " " << kp1.y << endl;
-        Mat pos21 = Ks[p1]*Rs[p1]*R_Ts[p2]*Ks[p2].inv()
-                   *(Mat_<double>(3, 1) << kp2.x, kp2.y, 1);
+        Mat pos21 = shift[p1][p2] *(Mat_<double>(3, 1) << kp2.x, kp2.y, 1);
+        //Mat pos21 = Ks[p1]*Rs[p1]*R_Ts[p2]*Ks[p2].inv()
+        //           *(Mat_<double>(3, 1) << kp2.x, kp2.y, 1);
         cerr << "PRED1 " << pos21.at<double>(0, 0) 
              << " " << pos21.at<double>(1, 0) << endl;
 
@@ -468,7 +481,7 @@ void STITCHING::autostitch() {
   Mat show = Mat::zeros(mxy-mny+1, mxx-mnx+1, CV_8UC3);
   Mat tmp = imgs[head].clone();
   tmp = tmp / 2;
-  tmp.copyTo(show(Rect(-mnx, -mny, imgs[head].cols, imgs[head].rows)));
+  //tmp.copyTo(show(Rect(-mnx, -mny, imgs[head].cols, imgs[head].rows)));
   //imgs[head].copyTo(show(Rect(-mnx, -mny, imgs[head].cols, imgs[head].rows)));
   #pragma omp parallel for
   for(size_t ii = 0; ii<ord.size(); ++ii) {
@@ -476,7 +489,7 @@ void STITCHING::autostitch() {
     for(int x = 0; x<imgs[i].cols; ++x)
       for(int y = 0; y<imgs[i].rows; ++y) {
         new_pos[i][x][y] -= {mnx, mny};
-        show.at<Vec3b>(new_pos[i][x][y]) += imgs[i].at<Vec3b>(y, x)/2;
+        show.at<Vec3b>(new_pos[i][x][y]) += imgs[i].at<Vec3b>(y, x);
       }
   }
   namedWindow("auto", WINDOW_NORMAL);

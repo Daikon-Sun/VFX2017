@@ -26,7 +26,6 @@ public:
     : imgs(i), keypoints(k) {};
   void MSOP();
   void SIFT();
-
 private:
   bool is_extrema(const vector< vector<Mat> >&, int, int, int, int);
   const vector<Mat>& imgs;

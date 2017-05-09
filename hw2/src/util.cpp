@@ -13,12 +13,13 @@ typedef vector<double> Para;
 typedef vector<Para> Paras;
 
 extern vector<string> all_panorama, all_detection, all_matching, all_projection;
-extern vector<string> all_stitching;
+extern vector<string> all_stitching, all_blending;
 extern Paras all_matching_para, all_projection_para, all_stitching_para;
-extern int panorama_mode;
-extern int detection_mode, matching_mode, projection_mode, stitching_mode;
-extern vector<int> matching_cnt, projection_cnt, stitching_cnt;
-extern string in_list, out_jpg;
+extern Paras all_blending_para;
+extern int panorama_mode, detection_mode, matching_mode;
+extern int projection_mode, stitching_mode, blending_mode;
+extern vector<int> matching_cnt, projection_cnt, stitching_cnt, blending_cnt;
+extern string in_list, out_prefix;
 extern bool verbose;
 
 bool check(const vector<double>& para, const string& name,
@@ -31,14 +32,14 @@ bool check(const vector<double>& para, const string& name,
   return true;
 }
 int parse(int ac, char** av) {
-  Para matching_para, projection_para, stitching_para;
+  Para matching_para, projection_para, stitching_para, blending_para;
 	options_description desc("All Available Options in VFX2017 hw2 project");
 	desc.add_options()
 			("help,h", "Print help message.")
       ("in_list,i", value<string>(&in_list)->default_value(in_list),
        "List of all input images.")
-      ("out_jpg,o", value<string>(&out_jpg)->default_value(out_jpg),
-       "Output filename of the panorama image.")
+      ("out_prefix,o", value<string>(&out_prefix)->default_value(out_prefix),
+       "Output prefix of the panorama images.")
       ("verbose,v", value<bool>()
        ->implicit_value(verbose, verbose?"True":"False")->composing(),
        "Show the final result.")
@@ -77,10 +78,16 @@ int parse(int ac, char** av) {
        "  0: \ttranslation\n"
        "  1: \ttranslation + estimate focal length\n"
        "  2: \ttranslation + rotation\n"
-       "  3: \tautomatic stitching")
+       "  3: \thomography\n"
+       "  4: \tautomatic stitching")
       ("stitching_para", 
        value< vector<double> >(&stitching_para)->multitoken(),
-       "Parameters of the chosen image stitching mode.");
+       "Parameters of the chosen image stitching mode.")
+
+      ("blending,b",
+       value<int>(&blending_mode)->default_value(blending_mode),
+       "modes of blending:\n"
+       "  0: \tlinear");
 
 	variables_map vm;
 	store(parse_command_line(ac, av, desc), vm);
@@ -106,6 +113,12 @@ int parse(int ac, char** av) {
               stitching_cnt[stitching_mode], "stitching"))
       return -1;
     all_stitching_para[stitching_mode] = stitching_para;
+  }
+  if(vm.count("blending_para")) {
+    if(!check(blending_para, all_blending[blending_mode], 
+              blending_cnt[blending_mode], "blending"))
+      return -1;
+    all_blending_para[blending_mode] = blending_para;
   }
 
   verbose = vm.count("verbose");

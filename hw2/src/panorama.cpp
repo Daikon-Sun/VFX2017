@@ -11,12 +11,13 @@ typedef vector<double> Para;
 
 #include "panorama.hpp"
 
-PANORAMA::PANORAMA(const string& in_list, const string& out_jpg, 
+PANORAMA::PANORAMA(const string& in_list, const string& out_prefix, 
                    const int& panorama_mode,
                    const int& detection_mode,
                    const int& matching_mode,
                    const int& projection_mode,
                    const int& stitching_mode,
+                   const int& blending_mode,
                    const Para& matching_para,
                    const Para& projection_para,
                    const Para& stitching_para,
@@ -26,19 +27,21 @@ PANORAMA::PANORAMA(const string& in_list, const string& out_jpg,
                     _matching_mode(matching_mode), 
                     _projection_mode(projection_mode), 
                     _stitching_mode(stitching_mode), 
-                    _out_jpg(out_jpg),
+                    _blending_mode(blending_mode),
+                    _out_prefix(out_prefix),
                     _verbose(verbose),
                     DETECTION(_imgs, _keypoints),
                     MATCHING(panorama_mode, matching_para, _imgs, 
                              _keypoints, _match_pairs),
                     PROJECTION(projection_para, _imgs, _keypoints),
                     STITCHING(panorama_mode, stitching_para, _imgs,
-                              _keypoints, _match_pairs, _shift) {
+                              _keypoints, _match_pairs, _shift, _order),
+                    BLENDING(_imgs, _shift, _order, _outputs) {
   ifstream ifs(in_list, ifstream::in);
   string fname;
   while(ifs >> fname) {
     Mat tmp = imread(fname, IMREAD_COLOR);
-    resize(tmp, tmp, Size(), 0.2, 0.2);
+    //resize(tmp, tmp, Size(), 0.2, 0.2);
     _imgs.push_back(tmp.clone());
   }
 };
@@ -72,57 +75,49 @@ void PANORAMA::process() {
   vector<type4> stitchings = {&STITCHING::translation,
                               &STITCHING::focal_length,
                               &STITCHING::rotation,
+                              &STITCHING::homography,
                               &STITCHING::autostitch};
   execute<type4>(stitchings[_stitching_mode]);
+  //blending
+  typedef void(BLENDING::*type5)();
+  vector<type5> blendings = {&BLENDING::linear};
+  execute<type5>(blendings[_blending_mode]);
 
-  visualization();
+  if(_verbose) visualize();
+  for(size_t i = 0; i<_outputs.size(); ++i)
+    imwrite(_out_prefix+to_string(i)+".jpg", _outputs[i]);
 }
-void PANORAMA::visualization() {
-  cerr << __func__ << endl;
-  size_t pic_num = _imgs.size();
-  if(!_panorama_mode) {
-    if(_stitching_mode == 1) {
-      double f = 0;
-      for(size_t pic = 0; pic<pic_num; ++pic) {
-        f += _shift[pic][pic+1].at<double>(0, 1) / _imgs.size();
-        _shift[pic][pic+1].at<double>(0, 1) = 0.0;
-      }
-      set_focal_length(f); 
-      cylindrical();
-    }
-    if(_stitching_mode <= 3) {
-      for(size_t pic = 1; pic+1<pic_num; ++pic)
-        _shift[pic][pic+1] *= _shift[pic-1][pic];
-      //vector<vector<vector<Point2d>>> new_pos(pic_num);
-      //#pragma omp parallel for
-      //for(size_t pic = 1; pic<pic_num; ++pic) {
-      //  new_pos[pic].resize(_imgs[pic].cols, vector<Point2d>(_imgs[pic].rows));
-      //  for(int x = 0; x<_imgs[pic].cols; ++x)
-      //    for(int y = 0; y<_imgs[pic].rows; ++y) {
-      //      Mat pos = _shift[pic-1][pic] * (Mat_<double>(3, 1) << x, y, 1);
-      //      const double& nx = pos.at<double>(0, 0);
-      //      const double& ny = pos.at<double>(1, 0);
-      //      new_pos[pic][x][y] = {nx, ny};
-      //      #pragma critical
-      //      mnx = min(mnx, nx);
-      //      mxx = max(mxx, nx);
-      //      mny = min(mny, ny);
-      //      mxy = max(mxy, ny);
-      //    }
-      //} 
-      Mat show = Mat::zeros(1200, 1200, CV_8UC3);
-      Mat tmp = _imgs[0] / _imgs.size();
-      tmp.copyTo(show(Rect(0, 0, _imgs[0].cols, _imgs[0].rows)));
-      for(size_t pic = 1; pic<pic_num; ++pic) {
-        Mat res;
-        warpPerspective(_imgs[pic], res, _shift[pic-1][pic], Size(1200, 1200));
-        cerr << res.size() << endl;
-        show += res/_imgs.size();
-      }
-      namedWindow("visualize", WINDOW_NORMAL);
-      imshow("visualize", show);
-      imwrite(_out_jpg, show);
-      waitKey(0);
-    }
-  } else cerr << "not in mode O(n)!" << endl;
+void PANORAMA::visualize() {
+  namedWindow("final result", WINDOW_NORMAL);
+  for(auto& out : _outputs) {
+    imshow("final result", out);
+    waitKey(0);
+  }
+  //for(size_t pic = 0; pic+1<keypoints.size(); ++pic) {
+  //   const auto red = Scalar(0, 0, 255);
+  //   Mat img0 = imgs[pic].clone();
+  //   Mat img1 = imgs[pic+1].clone();
+  //   for (const auto& p : inners[pic][pic+1]) {
+  //     const Keypoint& kp0 = keypoints[pic][p.first];
+  //     const Keypoint& kp1 = keypoints[pic+1][p.second];
+  //     drawMarker(img0, Point(kp0.x, kp0.y), red, MARKER_CROSS, 20, 2);
+  //     drawMarker(img1, Point(kp1.x, kp1.y), red, MARKER_CROSS, 20, 2);
+  //   }
+  //   Size sz[2];
+  //   for(size_t i = 0; i<2; ++i) sz[i] = imgs[pic+i].size();
+  //   Mat show(sz[0].height, sz[0].width+sz[1].width, CV_8UC3);
+  //   Mat left(show, Rect(0, 0, sz[0].width, sz[0].height));
+  //   Mat right(show, Rect(sz[0].width, 0, sz[1].width, sz[1].height));
+  //   img0.copyTo(left);
+  //   img1.copyTo(right);
+  //   for(const auto& p : inners[pic][pic+1]) {
+  //     const Keypoint& kp0 = keypoints[pic][p.first];
+  //     const Keypoint& kp1 = keypoints[pic+1][p.second];
+  //     line(show, Point(kp0.x, kp0.y), 
+  //          Point(sz[0].width+kp1.x, kp1.y), red, 2, 8);
+  //   }
+  //   namedWindow("process", WINDOW_NORMAL);
+  //   imshow("process", show);
+  //   waitKey(0);
+  //}
 }

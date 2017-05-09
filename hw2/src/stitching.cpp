@@ -184,18 +184,39 @@ void STITCHING::rotation() {
       if(!panorama_mode) break;
     }
 }
-//constexpr double MAX_RES = 100;
-constexpr double fac[11] = {1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800};
+void STITCHING::homography() {
+  cerr << __func__ << endl;
+  gen_order();
+  size_t pic_num = imgs.size();
+  vector<vector<pair<int, int>>> in_cnt(pic_num, vector<pair<int,int>>(pic_num));
+  shift.clear();
+  shift.resize(pic_num, vector<Mat>(pic_num));
+  #pragma omp parallel for 
+  for(size_t p1 = 0; p1<pic_num; ++p1) {
+    shift[p1][p1] = Mat::eye(3, 3, CV_64FC1);
+    for(size_t p2 = p1+1; p2<pic_num; ++p2) {
+      if(match_pairs[p1][p2].empty()) continue;
+      vector<Point2f> src, dst;      
+      for(const auto& mp : match_pairs[p1][p2]) {
+        int k1, k2; tie(k1, k2) = mp;
+        const auto& kp1 = keypoints[p1][k1];
+        const auto& kp2 = keypoints[p2][k2];
+        src.emplace_back(kp2.x, kp2.y);
+        dst.emplace_back(kp1.x, kp1.y);
+      }
+      shift[p1][p2] = findHomography(src, dst, CV_RANSAC, _para[0]);
+      shift[p2][p1] = shift[p1][p2].inv();
+      if(!panorama_mode) break;
+    }
+  }
+}
 struct BA {
   BA(double p1_x, double p1_y, double p2_x, double p2_y) 
     : p1_x(p1_x), p1_y(p1_y), p2_x(p2_x), p2_y(p2_y) {}
 
   template <typename T>
-  bool operator()(const T* const R1,
-                  const T* const K1,
-                  const T* const R2,
-                  const T* const K2,
-                  T* residuals) const {
+  bool operator()(const T* const R1, const T* const K1, const T* const R2,
+                  const T* const K2, T* residuals) const {
     Eigen::Matrix<T, 3, 1> pos, pred;
     pos    << T(p2_x), T(p2_y), T(1);
 
@@ -208,19 +229,15 @@ struct BA {
               T(R1[2]),      T(0), T(-R1[0]),
              T(-R1[1]),  T(R1[0]),      T(0);
     Ri /= ni;
-    Ri = sin(ni) * Ri + (T(1)-cos(ni)) * Ri * Ri;
-    Ri(0, 0) += T(1);
-    Ri(1, 1) += T(1);
-    Ri(2, 2) += T(1);
+    Ri = Eigen::Matrix<T, 3, 3>::Identity() 
+       + sin(ni) * Ri + (T(1)-cos(ni)) * Ri * Ri;
 
     Rj   <<      T(0), T(-R2[2]), T(R2[1]),
              T(R2[2]),      T(0),T(-R2[0]),
             T(-R2[1]),  T(R2[0]),     T(0);
     Rj /= nj;
-    Rj = sin(nj) * Rj + (T(1)-cos(nj)) * Rj * Rj;
-    Rj(0, 0) += T(1);
-    Rj(1, 1) += T(1);
-    Rj(2, 2) += T(1);
+    Rj = Eigen::Matrix<T, 3, 3>::Identity()
+       + sin(nj) * Rj + (T(1)-cos(nj)) * Rj * Rj;
 
     Ki     << K1[0],  T(0), T(0),
                T(0), K1[0], T(0),
@@ -230,6 +247,8 @@ struct BA {
                       T(0), T(1.0)/K2[0], T(0),
                       T(0),         T(0), T(1);
     pred = Ki * Ri * Rj.transpose() * Kj_inv * pos;
+    pred(0, 0) /= pred(2, 0);
+    pred(1, 0) /= pred(2, 0);
     residuals[0] = T(sqrt((pred(0, 0) - p1_x)*(pred(0, 0) - p1_x) +
                           (pred(1, 0) - p1_y)*(pred(1, 0) - p1_y)));
     return true;
@@ -243,15 +262,13 @@ struct BA {
   double p1_x, p1_y, p2_x, p2_y;
 };
 constexpr int M = 6;
-void STITCHING::autostitch() {
-  cerr << __func__ << endl;
+void STITCHING::gen_order() {
   size_t pic_num = imgs.size();
   vector<vector<pair<int, int>>> in_cnt(pic_num, vector<pair<int,int>>(pic_num));
   shift.clear();
   shift.resize(pic_num, vector<Mat>(pic_num));
-  vector<vector<vector<pair<int,int>>>>
-    inners(pic_num, vector<vector<pair<int,int>>>(pic_num));
-  //#pragma omp parallel for 
+  inners.resize(pic_num, vector<vector<pair<int,int>>>(pic_num));
+  #pragma omp parallel for 
   for(size_t p1 = 0; p1<pic_num; ++p1) {
     for(size_t p2 = p1+1; p2<pic_num; ++p2) {
       if(match_pairs[p1][p2].empty()) continue;
@@ -264,57 +281,14 @@ void STITCHING::autostitch() {
         dst.emplace_back(kp1.x, kp1.y);
       }
       Mat msk;
-      shift[p1][p2] = findHomography(src, dst, CV_RANSAC, _para[1], msk);
+      findHomography(src, dst, CV_RANSAC, _para[0], msk);
       int sm = sum(msk)[0];
-      //cerr << shift[p1][p2] << endl;
-      //cerr << msk << endl;
-      //cerr << p1 << " " << p2 << " " << match_pairs[p1][p2].size() 
-      //     << " " << sm << endl;
-      //for(const auto& mp : match_pairs[p1][p2]) {
-      //  int k1, k2; tie(k1, k2) = mp;
-      //  const auto& kp1 = keypoints[p1][k1];
-      //  const auto& kp2 = keypoints[p2][k2];
-      //  Mat pos = shift[p1][p2] *(Mat_<double>(3, 1) << kp2.x, kp2.y, 1);
-      //  cerr << "========================" << endl;
-      //  cerr << kp1.x << " " << kp1.y << endl;
-      //  cerr << pos.at<double>(0, 0) << " " << pos.at<double>(1, 0) << endl;
-      //}
       in_cnt[p1][p2] = {sm, p2};
       in_cnt[p2][p1] = {sm, p1};
       for(size_t j = 0; j<msk.rows; ++j) if(msk.at<uchar>(j, 0))
         inners[p1][p2].push_back(match_pairs[p1][p2][j]);
-      if(!panorama_mode) break;
     }
   }
-  cerr << "done1" << endl;
-  for(size_t pic = 0; pic+1<keypoints.size(); ++pic) {
-     const auto red = Scalar(0, 0, 255);
-     Mat img0 = imgs[pic].clone();
-     Mat img1 = imgs[pic+1].clone();
-     for (const auto& p : inners[pic][pic+1]) {
-       const Keypoint& kp0 = keypoints[pic][p.first];
-       const Keypoint& kp1 = keypoints[pic+1][p.second];
-       drawMarker(img0, Point(kp0.x, kp0.y), red, MARKER_CROSS, 20, 2);
-       drawMarker(img1, Point(kp1.x, kp1.y), red, MARKER_CROSS, 20, 2);
-     }
-     Size sz[2];
-     for(size_t i = 0; i<2; ++i) sz[i] = imgs[pic+i].size();
-     Mat show(sz[0].height, sz[0].width+sz[1].width, CV_8UC3);
-     Mat left(show, Rect(0, 0, sz[0].width, sz[0].height));
-     Mat right(show, Rect(sz[0].width, 0, sz[1].width, sz[1].height));
-     img0.copyTo(left);
-     img1.copyTo(right);
-     for(const auto& p : inners[pic][pic+1]) {
-       const Keypoint& kp0 = keypoints[pic][p.first];
-       const Keypoint& kp1 = keypoints[pic+1][p.second];
-       line(show, Point(kp0.x, kp0.y), 
-            Point(sz[0].width+kp1.x, kp1.y), red, 2, 8);
-     }
-     namedWindow("process", WINDOW_NORMAL);
-     imshow("process", show);
-     waitKey(0);
-  }
-  cerr << "done2" << endl;
   vector<set<int>> edges(pic_num);
   vector<pair<int,int>> cnt_all(pic_num);
   for(size_t i = 0; i<pic_num; ++i) {
@@ -331,168 +305,112 @@ void STITCHING::autostitch() {
       }
     }
   }
-  list<pair<int,int>> order;
-  int head = max_element(cnt_all.begin(), cnt_all.end())->second;
-  priority_queue<tuple<int,int,int>> pq;
   vector<bool> vis(pic_num);
-  vis[head] = true;
-  pq.emplace(0, head, -1);
-  while(!pq.empty()) {
-    int u, p; tie(ignore, u, p) = pq.top(); pq.pop();
-    order.emplace_back(u, p);
-    for(auto v : edges[u]) if(!vis[v]) {
-      vis[v] = true;
-      pq.emplace(in_cnt[u][v].first, v, u);
-    } 
+  size_t finish_cnt = 0;
+  while(finish_cnt < pic_num) {
+    vector<pair<int,int>> ord;
+    int root = max_element(cnt_all.begin(), cnt_all.end())->second;
+    vis[root] = true;
+    priority_queue<tuple<int,int,int>> pq;
+    pq.emplace(0, root, -1);
+    while(!pq.empty()) {
+      int u, p; tie(ignore, u, p) = pq.top(); pq.pop();
+      ord.emplace_back(u, p);
+      cnt_all[u].first = 0;
+      ++finish_cnt;
+      for(auto v : edges[u]) if(!vis[v]) {
+        vis[v] = true;
+        pq.emplace(in_cnt[u][v].first, v, u);
+      } 
+    }
+    order.push_back(ord);
   }
+}
+void STITCHING::autostitch() {
+  cerr << __func__ << endl;
+  gen_order();
 
+  size_t pic_num = imgs.size();
   using ceres::AutoDiffCostFunction;
   using ceres::CostFunction;
   using ceres::Problem;
   using ceres::Solver;
   using ceres::Solve;
   using ceres::LossFunction;
-  
-  auto en = ++order.begin();
+    
   double R[pic_num][3] = {0};
   for(size_t i = 0; i<pic_num; ++i) fill_n(R[i], 3, 1e-10);
   double K[pic_num][1] = {0};
-  K[order.begin()->first][0] = 1600;
-  for(; en != order.end();) {
-    vector<int> group;
-    for(auto st = order.begin(); st != en; ++st) group.push_back(st->first);
-    for(size_t j = 0; j<3; ++j) R[en->first][j] = R[en->second][j];
-    K[en->first][0] = K[en->second][0];
-    group.push_back(en->first);
-    ++en;
+  for(const auto& ord : order) {
+    size_t en = 1;
+    K[ord[0].first][0] = _para[1];
+    while(en < ord.size()) {
+      vector<int> group;
+      for(size_t st = 0; st < en; ++st) group.push_back(ord[st].first);
+      for(size_t j = 0; j<3; ++j) R[ord[en].first][j] = R[ord[en].second][j];
+      K[ord[en].first][0] = K[ord[en].second][0];
+      group.push_back(ord[en].first);
+      ++en;
 
-    Problem problem;
-    //ceres::LossFunctionWrapper* loss_func =
-    //  new ceres::LossFunctionWrapper(new ceres::HuberLoss(1000),
-    //                                 ceres::TAKE_OWNERSHIP);
-    for(size_t i = 0; i<group.size(); ++i) {
-      for(size_t j = 0; j<group.size(); ++j) if(i != j) {
-        int p1 = group[i], p2 = group[j];
-        if(p1 > p2) {
-          for(auto& keypair : inners[p2][p1]) {
-            int k2, k1; tie(k2, k1) = keypair;
-            const auto& kp2 = keypoints[p2][k2];
-            const auto& kp1 = keypoints[p1][k1];
-            CostFunction* cost_func = BA::Create(kp1.x, kp1.y, kp2.x, kp2.y);
-            problem.AddResidualBlock(cost_func, NULL,
-                                     R[p1], K[p1], R[p2], K[p2]);
-          }
-        } else {
-          for(auto& keypair : inners[p1][p2]) {
+      Problem problem;
+      ceres::LossFunctionWrapper* loss_func =
+        new ceres::LossFunctionWrapper(new ceres::HuberLoss(10001),
+                                       ceres::TAKE_OWNERSHIP);
+      for(size_t i = 0; i<group.size(); ++i) {
+        for(size_t j = 0; j<group.size(); ++j) if(i != j) {
+          const int& p1 = group[i], p2 = group[j];
+          bool rev = (p1 > p2);
+          for(auto& keypair : (rev ? inners[p2][p1] : inners[p1][p2])) {
             int k1, k2; tie(k1, k2) = keypair;
+            if(rev) swap(k1, k2);
             const auto& kp1 = keypoints[p1][k1];
             const auto& kp2 = keypoints[p2][k2];
             CostFunction* cost_func = BA::Create(kp1.x, kp1.y, kp2.x, kp2.y);
-            problem.AddResidualBlock(cost_func, NULL,
+            problem.AddResidualBlock(cost_func, loss_func,
                                      R[p1], K[p1], R[p2], K[p2]);
           }
         }
       }
+      Solver::Options options;
+      options.max_num_iterations = 100;
+      options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+      options.minimizer_progress_to_stdout = true;
+      Solver::Summary summary;
+      for(size_t iter = 0; iter < 10; ++iter) {
+        Solve(options, &problem, &summary);
+        loss_func->Reset(new ceres::HuberLoss(10001/(iter*10+1)),
+                             ceres::TAKE_OWNERSHIP);
+      }
+      cerr << summary.FullReport() << endl;
     }
-    Solver::Options options;
-    options.max_num_iterations = 1000;
-    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-    options.minimizer_progress_to_stdout = true;
-    Solver::Summary summary;
-    Solve(options, &problem, &summary);
-    //for(size_t iter = 0; iter < 1000; ++iter) {
-    //  Solve(options, &problem, &summary);
-    //  loss_func->Reset(new ceres::HuberLoss(1000/(iter+2)),
-    //                       ceres::TAKE_OWNERSHIP);
-    //}
-    cout << summary.FullReport() << "\n";
+    for(size_t i = 0; i<pic_num; ++i) {
+      cerr << i << endl;
+      for(size_t j = 0; j<3; ++j) cerr << R[i][j] << " ";
+      cerr << K[i][0] << endl;
+      cerr << "#####################" << endl;
+    }
   }
-
-  for(size_t i = 0; i<pic_num; ++i) {
-    cerr << i << endl;
-    for(size_t j = 0; j<3; ++j) cerr << R[i][j] << " ";
-    cerr << K[i][0] << endl;
-    cerr << "#####################" << endl;
-  }
-    
-  vector<Mat> Rs(pic_num), Ks(pic_num), R_Ts(pic_num), Hs(pic_num);
-  //#pragma omp parallel for
+  vector<Mat> Rs(pic_num), Ks(pic_num), R_Ts(pic_num);
+  #pragma omp parallel for
   for(size_t i = 0; i<pic_num; ++i) {
     Mat r = (Mat_<double>(3, 3) << 0, -R[i][2], R[i][1],
                                     R[i][2], 0, -R[i][0],
                                     -R[i][1], R[i][0], 0);
     double norm = sqrt(R[i][0]*R[i][0] + R[i][1]*R[i][1] + R[i][2]*R[i][2]);
     r = r / norm;
-    Rs[i] = sin(norm) * r + (1.0-cos(norm)) * r * r;
-    Rs[i].at<double>(0, 0) += 1;
-    Rs[i].at<double>(1, 1) += 1;
-    Rs[i].at<double>(2, 2) += 1;
+    Rs[i] = Mat::eye(3, 3, CV_64FC1) + sin(norm) * r + (1.0-cos(norm)) * r * r;
     transpose(Rs[i], R_Ts[i]);
     Ks[i] = (Mat_<double>(3, 3) << K[i][0], 0, 0,
                                      0, K[i][0], 0,
                                      0, 0, 1);
   }
-  for(size_t p1 = 0; p1<pic_num; ++p1) {
-    for(size_t p2 = p1+1; p2<pic_num; ++p2) {
-      for(auto& keypair : inners[p1][p2]) {
-        int k1, k2; tie(k1, k2) = keypair;
-        const auto& kp1 = keypoints[p1][k1];
-        const auto& kp2 = keypoints[p2][k2];
-        cerr << "GT1   " << kp1.x << " " << kp1.y << endl;
-        Mat pos21 = shift[p1][p2] *(Mat_<double>(3, 1) << kp2.x, kp2.y, 1);
-        //Mat pos21 = Ks[p1]*Rs[p1]*R_Ts[p2]*Ks[p2].inv()
-        //           *(Mat_<double>(3, 1) << kp2.x, kp2.y, 1);
-        cerr << "PRED1 " << pos21.at<double>(0, 0) 
-             << " " << pos21.at<double>(1, 0) << endl;
-
-        cerr << "GT2   " << kp2.x << " " << kp2.y << endl;
-        Mat pos12 = Ks[p2]*Rs[p2]*R_Ts[p1]*Ks[p1].inv()
-                   *(Mat_<double>(3, 1) << kp1.x, kp1.y, 1);
-        cerr << "PRED2 " << pos12.at<double>(0, 0) 
-             << " " << pos12.at<double>(1, 0) << endl;
-      }
+  for(const auto& ord : order) {
+    int root = ord[0].first;
+    for(auto it = ++ord.begin(); it != ord.end(); ++it) {
+      int p1 = it->first, p2 = it->second;
+      shift[p2][p1] = Ks[p2] * Rs[p2] * R_Ts[p1] * Ks[p1].inv();
+      shift[p1][p2] = shift[p2][p1].inv();
     }
   }
-
-  head = order.begin()->first;
-  Hs[head] = (Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
-  order.pop_front();
-  double mnx = 0, mny = 0, mxx = imgs[head].cols, mxy = imgs[head].rows;
-  vector<vector<vector<Point2d>>> new_pos(pic_num);
-  vector<pair<int,int>> ord(order.begin(), order.end());
-  for(size_t ii = 0; ii<ord.size(); ++ii) {
-    int j, i; tie(j, i) = ord[ii];
-    cerr << j << " " << i << endl;
-    Hs[j] = Hs[i] * Ks[i] * Rs[i] * R_Ts[j] * Ks[j].inv();
-    new_pos[j].resize(imgs[j].cols, vector<Point2d>(imgs[j].rows));
-    for(int x = 0; x<imgs[j].cols; ++x)
-      for(int y = 0; y<imgs[j].rows; ++y) {
-        Mat pos = Hs[j] * (Mat_<double>(3, 1) << x, y, 1);
-        const double& nx = pos.at<double>(0, 0);
-        const double& ny = pos.at<double>(1, 0);
-        new_pos[j][x][y] = {nx, ny};
-        mnx = min(mnx, nx);
-        mxx = max(mxx, nx);
-        mny = min(mny, ny);
-        mxy = max(mxy, ny);
-      }
-  }
-  cerr << mnx << " " << mny << " " << mxx << " " << mxy << endl;
-  Mat show = Mat::zeros(mxy-mny+1, mxx-mnx+1, CV_8UC3);
-  Mat tmp = imgs[head].clone();
-  tmp = tmp / 2;
-  //tmp.copyTo(show(Rect(-mnx, -mny, imgs[head].cols, imgs[head].rows)));
-  //imgs[head].copyTo(show(Rect(-mnx, -mny, imgs[head].cols, imgs[head].rows)));
-  #pragma omp parallel for
-  for(size_t ii = 0; ii<ord.size(); ++ii) {
-    int i; tie(i, ignore) = ord[ii];
-    for(int x = 0; x<imgs[i].cols; ++x)
-      for(int y = 0; y<imgs[i].rows; ++y) {
-        new_pos[i][x][y] -= {mnx, mny};
-        show.at<Vec3b>(new_pos[i][x][y]) += imgs[i].at<Vec3b>(y, x);
-      }
-  }
-  namedWindow("auto", WINDOW_NORMAL);
-  imshow("auto", show);
-  waitKey(0);
+  for(size_t i = 0; i<pic_num; ++i) shift[i][i] = Mat::eye(3, 3, CV_64FC1);
 }

@@ -16,7 +16,8 @@ vector<string> all_matching = {"exhaustive search",
                                "HAAR wavelet-based hashing"};
 vector<string> all_projection = {"none", "cylindrical"};
 vector<string> all_stitching = {"translation", "focal-length", "rotation",
-                                "autostitch"};
+                                "homography", "autostitch"};
+vector<string> all_blending = {"linear"};
 
 int panorama_mode = 0;
 int detection_mode = 0;
@@ -30,11 +31,15 @@ Paras all_projection_para = {{}, {750}};
 vector<int> projection_cnt = {0, 1};
 
 int stitching_mode = 0;
-Paras all_stitching_para = {{5000, 5}, {5000, 5}, {5000, 5}, {5000, 0.1}};
-vector<int> stitching_cnt = {2, 2, 2, 2};
+Paras all_stitching_para = {{5000, 2}, {5000, 2}, {5000, 2}, {2}, {2, 1600}};
+vector<int> stitching_cnt = {2, 2, 2, 1, 2};
+
+int blending_mode = 0;
+Paras all_blending_para = {{}};
+vector<int> blending_cnt = {0};
 
 string in_list = "input_images.txt";
-string out_jpg = "result/out.jpg";
+string out_prefix = "result/out";
 int detection = 0;
 bool verbose = true;
 
@@ -45,12 +50,13 @@ int main(int argc, char** argv) {
   if(!state) return 0;
   else if(state < 0) return 1;
 
-  PANORAMA panorama(in_list, out_jpg,
+  PANORAMA panorama(in_list, out_prefix,
                     panorama_mode,
                     detection_mode,
                     matching_mode,
                     projection_mode,
                     stitching_mode,
+                    blending_mode,
                     all_matching_para[matching_mode],
                     all_projection_para[projection_mode],
                     all_stitching_para[stitching_mode],

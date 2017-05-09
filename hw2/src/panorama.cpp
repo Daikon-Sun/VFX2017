@@ -88,6 +88,7 @@ void PANORAMA::process() {
     imwrite(_out_prefix+to_string(i)+".jpg", _outputs[i]);
 }
 void PANORAMA::visualize() {
+  cerr << __func__ << endl;
   namedWindow("final result", WINDOW_NORMAL);
   for(auto& out : _outputs) {
     imshow("final result", out);

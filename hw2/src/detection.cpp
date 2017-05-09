@@ -413,6 +413,12 @@ void DETECTION::SIFT() {
               kpt.patch.at<double>(cntx*32 + cnty*8 + ori, 0) 
                 += MAG.at<double>(ny, nx);
             }
+      Scalar mean, sd;
+      meanStdDev(kpt.patch, mean, sd);
+      kpt.patch = (kpt.patch-mean[0])/sd[0];
+      threshold(kpt.patch, kpt.patch, 0.2, 0, THRESH_TRUNC);
+      meanStdDev(kpt.patch, mean, sd);
+      kpt.patch = (kpt.patch-mean[0])/sd[0];
     }
   }
 }

@@ -361,7 +361,7 @@ void STITCHING::gen_order() {
   }
 }
 void STITCHING::autostitch() {
-  cerr << __func__ << endl;
+  cerr << __func__;
   gen_order();
 
   size_t pic_num = imgs.size();
@@ -375,9 +375,7 @@ void STITCHING::autostitch() {
   double R[pic_num][3] = {0};
   for(size_t i = 0; i<pic_num; ++i) fill_n(R[i], 3, 1e-10);
   double K[pic_num][1] = {0};
-  //for(size_t i = 0; i<pic_num; ++i) fill_n(K[i], 1, _para[1]);
   for(const auto& ord : order) {
-    //size_t en = ord.size()-1;
     size_t en = 1;
     K[ord[0].first][0] = _para[1];
     while(en < ord.size()) {
@@ -407,27 +405,27 @@ void STITCHING::autostitch() {
           }
         }
       }
-      const int tot_iter = 100, max_iter = 100;
+      const int tot_iter = 5, max_iter = 100;
       Solver::Options options;
       options.max_num_iterations = max_iter;
       options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-      options.minimizer_progress_to_stdout = true;
+      options.minimizer_progress_to_stdout = false;
       Solver::Summary summary;
       for(size_t iter = 0; iter < tot_iter; ++iter) {
         Solve(options, &problem, &summary);
         loss_func->Reset(
-            new ceres::HuberLoss(100001/(iter*(10000.0/tot_iter/max_iter)+1)),
+            new ceres::HuberLoss(100001/(iter*(10000.0/tot_iter)+1)+1),
             ceres::TAKE_OWNERSHIP
         );
       }
-      cerr << summary.FullReport() << endl;
+      //cerr << summary.FullReport() << endl;
     }
-    for(size_t i = 0; i<pic_num; ++i) {
-      cerr << i << endl;
-      for(size_t j = 0; j<3; ++j) cerr << R[i][j] << " ";
-      cerr << K[i][0] << endl;
-      cerr << "#####################" << endl;
-    }
+    //for(size_t i = 0; i<pic_num; ++i) {
+    //  cerr << i << endl;
+    //  for(size_t j = 0; j<3; ++j) cerr << R[i][j] << " ";
+    //  cerr << K[i][0] << endl;
+    //  cerr << "#####################" << endl;
+    //}
   }
   vector<Mat> Rs(pic_num), Ks(pic_num), R_Ts(pic_num);
   #pragma omp parallel for
@@ -443,28 +441,28 @@ void STITCHING::autostitch() {
                                      0, K[i][0], 0,
                                      0, 0, 1);
   }
-  for(size_t p1 = 0; p1<pic_num; ++p1)
-    for(size_t p2 = p1+1; p2<pic_num; ++p2)
-      for(auto& keypair : inners[p1][p2]) {
-        int k1, k2; tie(k1, k2) = keypair;
-        const auto& kp1 = keypoints[p1][k1];
-        const auto& kp2 = keypoints[p2][k2];
-        cerr << "GT1   " << kp1.x << " " << kp1.y << endl;
-        Mat pos21 = Ks[p1]*Rs[p1]*R_Ts[p2]*Ks[p2].inv()
-                   *(Mat_<double>(3, 1) << kp2.x, kp2.y, 1);
-		    pos21.at<double>(0, 0) /= pos21.at<double>(2, 0);	
-		    pos21.at<double>(1, 0) /= pos21.at<double>(2, 0);	
-        cerr << "PRED1 " << pos21.at<double>(0, 0) 
-             << " " << pos21.at<double>(1, 0) << endl;
+  //for(size_t p1 = 0; p1<pic_num; ++p1)
+  //  for(size_t p2 = p1+1; p2<pic_num; ++p2)
+  //    for(auto& keypair : inners[p1][p2]) {
+  //      int k1, k2; tie(k1, k2) = keypair;
+  //      const auto& kp1 = keypoints[p1][k1];
+  //      const auto& kp2 = keypoints[p2][k2];
+  //      cerr << "GT1   " << kp1.x << " " << kp1.y << endl;
+  //      Mat pos21 = Ks[p1]*Rs[p1]*R_Ts[p2]*Ks[p2].inv()
+  //                 *(Mat_<double>(3, 1) << kp2.x, kp2.y, 1);
+	//	    pos21.at<double>(0, 0) /= pos21.at<double>(2, 0);	
+	//	    pos21.at<double>(1, 0) /= pos21.at<double>(2, 0);	
+  //      cerr << "PRED1 " << pos21.at<double>(0, 0) 
+  //           << " " << pos21.at<double>(1, 0) << endl;
 
-        cerr << "GT2   " << kp2.x << " " << kp2.y << endl;
-        Mat pos12 = Ks[p2]*Rs[p2]*R_Ts[p1]*Ks[p1].inv()
-                   *(Mat_<double>(3, 1) << kp1.x, kp1.y, 1);
-		    pos12.at<double>(0, 0) /= pos12.at<double>(2, 0);	
-		    pos12.at<double>(1, 0) /= pos12.at<double>(2, 0);	
-        cerr << "PRED2 " << pos12.at<double>(0, 0) 
-             << " " << pos12.at<double>(1, 0) << endl;
-      }
+  //      cerr << "GT2   " << kp2.x << " " << kp2.y << endl;
+  //      Mat pos12 = Ks[p2]*Rs[p2]*R_Ts[p1]*Ks[p1].inv()
+  //                 *(Mat_<double>(3, 1) << kp1.x, kp1.y, 1);
+	//	    pos12.at<double>(0, 0) /= pos12.at<double>(2, 0);	
+	//	    pos12.at<double>(1, 0) /= pos12.at<double>(2, 0);	
+  //      cerr << "PRED2 " << pos12.at<double>(0, 0) 
+  //           << " " << pos12.at<double>(1, 0) << endl;
+  //    }
   for(const auto& ord : order) {
     int root = ord[0].first;
     for(auto it = ++ord.begin(); it != ord.end(); ++it) {

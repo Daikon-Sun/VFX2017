@@ -20,8 +20,8 @@ pair<Point2d, Point2d> BLENDING::get_corner(const Mat& H, const Mat& src) {
   return {{mnx, mny}, {mxx, mxy}};
 }
 void BLENDING::linear() {
-  cerr << __func__ << endl;
-  for(auto y:order) for(auto x:y) cerr << x.first << " " << x.second << endl;
+  cerr << __func__;
+  //for(auto y:order) for(auto x:y) cerr << x.first << " " << x.second << endl;
   size_t pic_num = imgs.size();
   outputs.resize(order.size());
   for(size_t pic = 0; pic<order.size(); ++pic) {
@@ -37,7 +37,7 @@ void BLENDING::linear() {
       mny = min(mny, pt1.y);
       mxy = max(mxy, pt2.y);
     }
-    cerr << mnx << " " << mny << " " << mxx << " " << mxy << endl;
+    //cerr << mnx << " " << mny << " " << mxx << " " << mxy << endl;
     Size sz = Size(mxx-mnx, mxy-mny);
     Mat& show = outputs[pic];
     show = Mat::zeros(sz, CV_64FC3);
@@ -52,18 +52,8 @@ void BLENDING::linear() {
       show += dst;
       threshold(dst, msk, 0, 1, THRESH_BINARY);
       weight += msk;
-
-      //Mat tmp = show.clone();
-      //divide(tmp, weight, tmp);
-      //tmp.convertTo(tmp, CV_8UC3);
-      //namedWindow("visualize", WINDOW_NORMAL);
-      //imshow("visualize", tmp);
-      //waitKey(0);
     }
     divide(show, weight, show);
     show.convertTo(show, CV_8UC3);
-    namedWindow("visualize", WINDOW_NORMAL);
-    imshow("visualize", show);
-    waitKey(0);
   }
 }

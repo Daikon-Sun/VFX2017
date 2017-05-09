@@ -121,7 +121,7 @@ int parse(int ac, char** av) {
     all_blending_para[blending_mode] = blending_para;
   }
 
-  verbose = vm.count("verbose");
+  verbose |= vm.count("verbose");
 
   return 1;
 }

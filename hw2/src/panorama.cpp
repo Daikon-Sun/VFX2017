@@ -112,13 +112,15 @@ void PANORAMA::visualization() {
           }
       } 
       Mat show = Mat::zeros(mxy-mny, mxx-mnx, CV_8UC3);
-      _imgs[0].copyTo(show(Rect(0, -mny, _imgs[0].cols, _imgs[0].rows)));
+      Mat tmp = _imgs[0].clone();
+      tmp = tmp / 2;
+      tmp.copyTo(show(Rect(0, -mny, _imgs[0].cols, _imgs[0].rows)));
       #pragma omp parallel for
       for(size_t pic = 1; pic<pic_num; ++pic)
         for(int x = 0; x<_imgs[pic].cols; ++x)
           for(int y = 0; y<_imgs[pic].rows; ++y) {
             new_pos[pic][x][y] -= {mnx, mny};
-            show.at<Vec3b>(new_pos[pic][x][y]) = _imgs[pic].at<Vec3b>(y, x);
+            show.at<Vec3b>(new_pos[pic][x][y]) += _imgs[pic].at<Vec3b>(y, x) / 2;
           }
       imwrite(_out_jpg, show);
       namedWindow("visualize", WINDOW_NORMAL);

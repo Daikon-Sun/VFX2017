@@ -18,11 +18,6 @@ include_directories(${CERES_INCLUDE_DIRS})
 #eigen3
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIRS})
-#SET( EIGEN3_INCLUDE_DIR "/usr/include/eigen3/" )
-#IF( NOT EIGEN3_INCLUDE_DIR )
-#    MESSAGE( FATAL_ERROR "Please point the environment variable EIGEN3_INCLUDE_DIR to the include directory of your Eigen3 installation.")
-#ENDIF()
-#INCLUDE_DIRECTORIES ( "${EIGEN3_INCLUDE_DIR}" )
 #linking
 aux_source_directory(./src SRC)
 add_executable(main ${SRC})

@@ -1,5 +1,4 @@
 #include <eigen3/Eigen/Dense>
-#include <eigen3/unsupported/Eigen/MatrixFunctions>
 #include <ceres/ceres.h>
 #include <opencv2/opencv.hpp>
 
@@ -275,35 +274,35 @@ void STITCHING::autostitch() {
       if(!panorama_mode) break;
     }
   }
-  //cerr << "done1" << endl;
-  //for(size_t pic = 0; pic+1<keypoints.size(); ++pic) {
-  //   const auto red = Scalar(0, 0, 255);
-  //   Mat img0 = imgs[pic].clone();
-  //   Mat img1 = imgs[pic+1].clone();
-  //   for (const auto& p : match_pairs[pic][pic+1]) {
-  //     const Keypoint& kp0 = keypoints[pic][p.first];
-  //     const Keypoint& kp1 = keypoints[pic+1][p.second];
-  //     drawMarker(img0, Point(kp0.x, kp0.y), red, MARKER_CROSS, 20, 2);
-  //     drawMarker(img1, Point(kp1.x, kp1.y), red, MARKER_CROSS, 20, 2);
-  //   }
-  //   Size sz[2];
-  //   for(size_t i = 0; i<2; ++i) sz[i] = imgs[pic+i].size();
-  //   Mat show(sz[0].height, sz[0].width+sz[1].width, CV_8UC3);
-  //   Mat left(show, Rect(0, 0, sz[0].width, sz[0].height));
-  //   Mat right(show, Rect(sz[0].width, 0, sz[1].width, sz[1].height));
-  //   img0.copyTo(left);
-  //   img1.copyTo(right);
-  //   for(const auto& p : match_pairs[pic][pic+1]) {
-  //     const Keypoint& kp0 = keypoints[pic][p.first];
-  //     const Keypoint& kp1 = keypoints[pic+1][p.second];
-  //     line(show, Point(kp0.x, kp0.y), 
-  //          Point(sz[0].width+kp1.x, kp1.y), red, 2, 8);
-  //   }
-  //   namedWindow("process", WINDOW_NORMAL);
-  //   imshow("process", show);
-  //   waitKey(0);
-  //}
-  //cerr << "done2" << endl;
+  cerr << "done1" << endl;
+  for(size_t pic = 0; pic+1<keypoints.size(); ++pic) {
+     const auto red = Scalar(0, 0, 255);
+     Mat img0 = imgs[pic].clone();
+     Mat img1 = imgs[pic+1].clone();
+     for (const auto& p : inners[pic][pic+1]) {
+       const Keypoint& kp0 = keypoints[pic][p.first];
+       const Keypoint& kp1 = keypoints[pic+1][p.second];
+       drawMarker(img0, Point(kp0.x, kp0.y), red, MARKER_CROSS, 20, 2);
+       drawMarker(img1, Point(kp1.x, kp1.y), red, MARKER_CROSS, 20, 2);
+     }
+     Size sz[2];
+     for(size_t i = 0; i<2; ++i) sz[i] = imgs[pic+i].size();
+     Mat show(sz[0].height, sz[0].width+sz[1].width, CV_8UC3);
+     Mat left(show, Rect(0, 0, sz[0].width, sz[0].height));
+     Mat right(show, Rect(sz[0].width, 0, sz[1].width, sz[1].height));
+     img0.copyTo(left);
+     img1.copyTo(right);
+     for(const auto& p : inners[pic][pic+1]) {
+       const Keypoint& kp0 = keypoints[pic][p.first];
+       const Keypoint& kp1 = keypoints[pic+1][p.second];
+       line(show, Point(kp0.x, kp0.y), 
+            Point(sz[0].width+kp1.x, kp1.y), red, 2, 8);
+     }
+     namedWindow("process", WINDOW_NORMAL);
+     imshow("process", show);
+     waitKey(0);
+  }
+  cerr << "done2" << endl;
   vector<set<int>> edges(pic_num);
   vector<pair<int,int>> cnt_all(pic_num);
   for(size_t i = 0; i<pic_num; ++i) {
@@ -356,9 +355,9 @@ void STITCHING::autostitch() {
     ++en;
 
     Problem problem;
-    ceres::LossFunctionWrapper* loss_func =
-      new ceres::LossFunctionWrapper(new ceres::HuberLoss(200000),
-                                     ceres::TAKE_OWNERSHIP);
+    //ceres::LossFunctionWrapper* loss_func =
+    //  new ceres::LossFunctionWrapper(new ceres::HuberLoss(1000),
+    //                                 ceres::TAKE_OWNERSHIP);
     for(size_t i = 0; i<group.size(); ++i) {
       for(size_t j = 0; j<group.size(); ++j) if(i != j) {
         int p1 = group[i], p2 = group[j];
@@ -368,7 +367,7 @@ void STITCHING::autostitch() {
             const auto& kp2 = keypoints[p2][k2];
             const auto& kp1 = keypoints[p1][k1];
             CostFunction* cost_func = BA::Create(kp1.x, kp1.y, kp2.x, kp2.y);
-            problem.AddResidualBlock(cost_func, loss_func,
+            problem.AddResidualBlock(cost_func, NULL,
                                      R[p1], K[p1], R[p2], K[p2]);
           }
         } else {
@@ -389,9 +388,9 @@ void STITCHING::autostitch() {
     options.minimizer_progress_to_stdout = true;
     Solver::Summary summary;
     Solve(options, &problem, &summary);
-    //for(size_t iter = 0; iter < 30; ++iter) {
+    //for(size_t iter = 0; iter < 1000; ++iter) {
     //  Solve(options, &problem, &summary);
-    //  loss_func->Reset(new ceres::HuberLoss(20000/(iter*1000+1)),
+    //  loss_func->Reset(new ceres::HuberLoss(1000/(iter+2)),
     //                       ceres::TAKE_OWNERSHIP);
     //}
     cout << summary.FullReport() << "\n";
@@ -467,16 +466,19 @@ void STITCHING::autostitch() {
   }
   cerr << mnx << " " << mny << " " << mxx << " " << mxy << endl;
   Mat show = Mat::zeros(mxy-mny+1, mxx-mnx+1, CV_8UC3);
+  Mat tmp = imgs[head].clone();
+  tmp = tmp / 2;
+  tmp.copyTo(show(Rect(-mnx, -mny, imgs[head].cols, imgs[head].rows)));
+  //imgs[head].copyTo(show(Rect(-mnx, -mny, imgs[head].cols, imgs[head].rows)));
   #pragma omp parallel for
   for(size_t ii = 0; ii<ord.size(); ++ii) {
     int i; tie(i, ignore) = ord[ii];
     for(int x = 0; x<imgs[i].cols; ++x)
       for(int y = 0; y<imgs[i].rows; ++y) {
         new_pos[i][x][y] -= {mnx, mny};
-        show.at<Vec3b>(new_pos[i][x][y]) = imgs[i].at<Vec3b>(y, x);
+        show.at<Vec3b>(new_pos[i][x][y]) += imgs[i].at<Vec3b>(y, x)/2;
       }
   }
-  imgs[head].copyTo(show(Rect(-mnx, -mny, imgs[head].cols, imgs[head].rows)));
   namedWindow("auto", WINDOW_NORMAL);
   imshow("auto", show);
   waitKey(0);

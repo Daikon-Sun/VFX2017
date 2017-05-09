@@ -13,7 +13,7 @@ using namespace std;
 
 #include "detection.hpp"
 
-constexpr int MAX_LAYER            = 1;
+constexpr int MAX_LAYER            = 6;
 constexpr double G_KERN            = 0;
 constexpr double SIGMA_P           = 1.0;  // pyramid smoothing
 constexpr double SIGMA_I           = 1.5;  // integration scale

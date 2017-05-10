@@ -358,6 +358,7 @@ void STITCHING::autostitch() {
       K[ord[en].first][0] = K[ord[en].second][0];
       group.push_back(ord[en].first);
       ++en;
+      cerr << "END: " << en << endl;
 
       Problem problem;
       ceres::LossFunctionWrapper* loss_func =
@@ -380,7 +381,7 @@ void STITCHING::autostitch() {
           }
         }
       }
-      const int tot_iter = (order.size()-en)+8, max_iter = 160;
+      const int tot_iter = (ord.size()-en)+8, max_iter = 160;
       Solver::Options options;
       options.max_num_iterations = max_iter;
       options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;

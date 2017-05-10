@@ -87,7 +87,7 @@ int parse(int ac, char** av) {
       ("blending,b",
        value<int>(&blending_mode)->default_value(blending_mode),
        "modes of blending:\n"
-       "  0: \tlinear\n"
+       "  0: \taverage\n"
        "  1: \tmulti-band");
 
 	variables_map vm;

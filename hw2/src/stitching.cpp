@@ -435,8 +435,8 @@ void STITCHING::autostitch() {
   //      cerr << "PRED1 " << pos21.at<double>(0, 0) 
   //           << " " << pos21.at<double>(1, 0) << endl;
 
-  //      cerr << "GT2   " << kp2.x << " " << kp2.y << endl;
   //      Mat pos12 = Ks[p2]*Rs[p2]*R_Ts[p1]*Ks[p1].inv()
+  //      cerr << "GT2   " << kp2.x << " " << kp2.y << endl;
   //                 *(Mat_<double>(3, 1) << kp1.x, kp1.y, 1);
 	//	    pos12.at<double>(0, 0) /= pos12.at<double>(2, 0);	
 	//	    pos12.at<double>(1, 0) /= pos12.at<double>(2, 0);	

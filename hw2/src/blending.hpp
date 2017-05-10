@@ -6,6 +6,7 @@ public:
   BLENDING(const vector<Mat>& i, vector<vector<Mat>>& s, 
            const vector<vector<pair<int,int>>>& ord, vector<Mat>& ou)
     : imgs(i), shift(s), order(ord), outputs(ou) {};
+  void average();
   void linear();
 private:
   void straightening();

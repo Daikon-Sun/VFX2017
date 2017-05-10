@@ -80,7 +80,8 @@ void PANORAMA::process() {
   execute<type4>(stitchings[_stitching_mode]);
   //blending
   typedef void(BLENDING::*type5)();
-  vector<type5> blendings = {&BLENDING::linear};
+  vector<type5> blendings = {&BLENDING::average,
+                             &BLENDING::linear};
   execute<type5>(blendings[_blending_mode]);
 
   if(_verbose) visualize();

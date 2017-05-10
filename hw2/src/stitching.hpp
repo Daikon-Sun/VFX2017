@@ -28,6 +28,7 @@ private:
   vector<vector<pair<int,int>>>& order;
   vector<double> _para;
   vector<vector<vector<pair<int,int>>>> inners;
+  vector<set<int>> edges;
 };
 
 #endif

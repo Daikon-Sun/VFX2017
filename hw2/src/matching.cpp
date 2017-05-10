@@ -150,6 +150,7 @@ void MATCHING::exhaustive() {
       }
       if(!panorama_mode) break;
     }
+  //show_match();
 }
 bool MATCHING::check_match_haar(const tuple<int, int, double>& mp, 
                            size_t p1, size_t p2, double sec_mn) const {
@@ -182,4 +183,35 @@ bool MATCHING::check_match_exhaustive(int target_i, int j,
     }
   }
   return best_i != -1 && target_i == best_i;
+}
+void MATCHING::show_match() {
+	for(size_t p1 = 0; p1<keypoints.size(); ++p1) {
+    for(size_t p2 = p1+1; p2<keypoints.size(); ++p2) {
+		  const auto red = Scalar(0, 0, 255);
+		  Mat img0 = imgs[p1].clone();
+		  Mat img1 = imgs[p2].clone();
+		  for (const auto& p : match_pairs[p1][p2]) {
+		    const Keypoint& kp0 = keypoints[p1][p.first];
+		    const Keypoint& kp1 = keypoints[p2][p.second];
+		    drawMarker(img0, Point(kp0.x, kp0.y), red, MARKER_CROSS, 20, 2);
+		    drawMarker(img1, Point(kp1.x, kp1.y), red, MARKER_CROSS, 20, 2);
+		  }
+		  Size sz[2] = {imgs[p1].size(), imgs[p2].size()};
+		  Mat show(sz[0].height, sz[0].width+sz[1].width, CV_8UC3);
+		  Mat left(show, Rect(0, 0, sz[0].width, sz[0].height));
+		  Mat right(show, Rect(sz[0].width, 0, sz[1].width, sz[1].height));
+		  img0.copyTo(left);
+		  img1.copyTo(right);
+		  for(const auto& p : match_pairs[p1][p2]) {
+		    const Keypoint& kp0 = keypoints[p1][p.first];
+		    const Keypoint& kp1 = keypoints[p2][p.second];
+		    line(show, Point(kp0.x, kp0.y), 
+		   			Point(sz[0].width+kp1.x, kp1.y), red, 2, 8);
+		  }
+		  namedWindow("process", WINDOW_NORMAL);
+		  imshow("process", show);
+		  waitKey(0);
+      if(!panorama_mode) break;
+    }
+	}
 }

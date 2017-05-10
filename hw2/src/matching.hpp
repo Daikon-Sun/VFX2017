@@ -8,6 +8,7 @@ public:
   void HAAR();
   void exhaustive();
 private:
+  void show_match();
   bool in_mid(const int&);
   bool is_align(const Keypoint&, const Keypoint&, const double&);
   bool check_match_haar(const tuple<int, int, double>&, 

@@ -215,34 +215,6 @@ void STITCHING::homography() {
       if(!panorama_mode) break;
     }
   }
-	for(size_t pic = 0; pic+1<keypoints.size(); ++pic) {
-		 const auto red = Scalar(0, 0, 255);
-		 Mat img0 = imgs[pic].clone();
-		 Mat img1 = imgs[pic+1].clone();
-		 for (const auto& p : match_pairs[pic][pic+1]) {
-			 const Keypoint& kp0 = keypoints[pic][p.first];
-			 const Keypoint& kp1 = keypoints[pic+1][p.second];
-			 drawMarker(img0, Point(kp0.x, kp0.y), red, MARKER_CROSS, 20, 2);
-			 drawMarker(img1, Point(kp1.x, kp1.y), red, MARKER_CROSS, 20, 2);
-		 }
-		 Size sz[2];
-		 for(size_t i = 0; i<2; ++i) sz[i] = imgs[pic+i].size();
-		 Mat show(sz[0].height, sz[0].width+sz[1].width, CV_8UC3);
-		 Mat left(show, Rect(0, 0, sz[0].width, sz[0].height));
-		 Mat right(show, Rect(sz[0].width, 0, sz[1].width, sz[1].height));
-		 img0.copyTo(left);
-		 img1.copyTo(right);
-		 for(const auto& p : match_pairs[pic][pic+1]) {
-			 const Keypoint& kp0 = keypoints[pic][p.first];
-			 const Keypoint& kp1 = keypoints[pic+1][p.second];
-			 line(show, Point(kp0.x, kp0.y), 
-						Point(sz[0].width+kp1.x, kp1.y), red, 2, 8);
-		 }
-		 namedWindow("process", WINDOW_NORMAL);
-		 imshow("process", show);
-		 waitKey(0);
-	}
-
 }
 struct BA {
   BA(double p1_x, double p1_y, double p2_x, double p2_y) 
@@ -323,7 +295,7 @@ void STITCHING::gen_order() {
         inners[p1][p2].push_back(match_pairs[p1][p2][j]);
     }
   }
-  vector<set<int>> edges(pic_num);
+  edges.resize(pic_num);
   vector<pair<int,int>> cnt_all(pic_num);
   for(size_t i = 0; i<pic_num; ++i) {
     cnt_all[i].second = i;
@@ -332,6 +304,7 @@ void STITCHING::gen_order() {
       int p1 = i, p2 = in_cnt[i][j].second;
       if(p1 > p2) swap(p1, p2);
       if(in_cnt[i][j].first > 5.9+0.22*match_pairs[p1][p2].size()) {
+        cerr << p1 << " " << p2 << endl;
         edges[p1].insert(p2);
         edges[p2].insert(p1);
         cnt_all[p1].first += in_cnt[i][j].first;
@@ -391,10 +364,12 @@ void STITCHING::autostitch() {
         new ceres::LossFunctionWrapper(new ceres::HuberLoss(100001),
                                        ceres::TAKE_OWNERSHIP);
       for(size_t i = 0; i<group.size(); ++i) {
-        for(size_t j = 0; j<group.size(); ++j) if(i != j) {
-          const int& p1 = group[i], p2 = group[j];
+        const int& p1 = group[i];
+        for(auto p2 : edges[p1]) if(p1 != p2) {
+          if(find(group.begin(), group.end(), p2) == group.end()) continue;
           bool rev = (p1 > p2);
-          for(auto& keypair : (rev ? inners[p2][p1] : inners[p1][p2])) {
+          const auto& keypairs = (rev ? inners[p2][p1] : inners[p1][p2]);
+          for(auto& keypair : keypairs) {
             int k1, k2; tie(k1, k2) = keypair;
             if(rev) swap(k1, k2);
             const auto& kp1 = keypoints[p1][k1];
@@ -405,11 +380,11 @@ void STITCHING::autostitch() {
           }
         }
       }
-      const int tot_iter = 5, max_iter = 100;
+      const int tot_iter = (order.size()-en)+8, max_iter = 160;
       Solver::Options options;
       options.max_num_iterations = max_iter;
       options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-      options.minimizer_progress_to_stdout = false;
+      options.minimizer_progress_to_stdout = true;
       Solver::Summary summary;
       for(size_t iter = 0; iter < tot_iter; ++iter) {
         Solve(options, &problem, &summary);
@@ -418,7 +393,7 @@ void STITCHING::autostitch() {
             ceres::TAKE_OWNERSHIP
         );
       }
-      //cerr << summary.FullReport() << endl;
+      cerr << summary.FullReport() << endl;
     }
     //for(size_t i = 0; i<pic_num; ++i) {
     //  cerr << i << endl;

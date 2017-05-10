@@ -19,8 +19,37 @@ pair<Point2d, Point2d> BLENDING::get_corner(const Mat& H, const Mat& src) {
   //cerr << mnx << " " << mny << " " << mxx << " " << mxy << endl;
   return {{mnx, mny}, {mxx, mxy}};
 }
+void BLENDING::straightening() {
+  double rx = 0, ry = 0, rz = 0;
+  size_t pic_num = imgs.size();
+  for(size_t i = 0; i<pic_num; ++i) {
+    for(size_t j = i+1; j<pic_num; ++j) {
+      if(shift[i][j].at<double>(0, 2) > 0) {
+        rx += shift[i][j].at<double>(2, 1);
+        ry += shift[i][j].at<double>(0, 2);
+        rz += shift[i][j].at<double>(1, 0);
+      } else {
+        rx += -shift[j][i].at<double>(2, 1);
+        ry += -shift[j][i].at<double>(0, 2);
+        rz += -shift[j][i].at<double>(1, 0);
+      }
+    }
+  }
+  Mat tar = (Mat_<double>(3, 3) << 0, 0, ry, 0, 0, 0, -ry, 0, 0);
+  double nm = ry;
+  tar /= nm;
+  tar = Mat::eye(3, 3, CV_64FC1) + sin(nm) * tar + (1.0-cos(nm)) * tar * tar;
+  Mat grot = (Mat_<double>(3, 3) <<  0,-rz, ry,
+                                    rz,  0,-rx,
+                                   -ry, rx,  0);
+  nm = sqrt(rx*rx + ry*ry + rz*rz);
+  grot = grot / nm;
+  grot = Mat::eye(3, 3, CV_64FC1) + sin(nm) * grot + (1.0-cos(nm)) * grot * grot;
+  for(size_t i = 0; i<pic_num; ++i) shift[i][i] = tar.inv() * grot;
+}
 void BLENDING::linear() {
   cerr << __func__;
+  straightening();
   //for(auto y:order) for(auto x:y) cerr << x.first << " " << x.second << endl;
   size_t pic_num = imgs.size();
   outputs.resize(order.size());

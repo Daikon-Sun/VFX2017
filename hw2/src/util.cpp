@@ -46,8 +46,8 @@ int parse(int ac, char** av) {
       ("panorama,p",
        value<int>(&panorama_mode)->default_value(panorama_mode),
        "modes of generating panorama:\n"
-       "  0: \tO(n)\n"
-       "  1: \tO(n^2)")
+       "  0: \tlinear ordering(n)\n"
+       "  1: \tany ordering(n^2)")
       ("detection,d",
        value<int>(&detection_mode)->default_value(detection_mode),
        "modes of feature detection:\n"
@@ -82,12 +82,13 @@ int parse(int ac, char** av) {
        "  4: \tautomatic stitching")
       ("stitching_para", 
        value< vector<double> >(&stitching_para)->multitoken(),
-       "Parameters of the chosen image stitching mode.")
+       "Parameters of the chosen image stitching mode.\n\n")
 
       ("blending,b",
        value<int>(&blending_mode)->default_value(blending_mode),
        "modes of blending:\n"
-       "  0: \tlinear");
+       "  0: \tlinear\n"
+       "  1: \tmulti-band");
 
 	variables_map vm;
 	store(parse_command_line(ac, av, desc), vm);

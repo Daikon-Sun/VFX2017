@@ -404,18 +404,22 @@ void STITCHING::autostitch() {
     //}
   }
   vector<Mat> Rs(pic_num), Ks(pic_num), R_Ts(pic_num);
-  #pragma omp parallel for
+  //#pragma omp parallel for
   for(size_t i = 0; i<pic_num; ++i) {
+    cerr << i << endl;
     Mat r = (Mat_<double>(3, 3) << 0, -R[i][2], R[i][1],
                                     R[i][2], 0, -R[i][0],
                                     -R[i][1], R[i][0], 0);
     double norm = sqrt(R[i][0]*R[i][0] + R[i][1]*R[i][1] + R[i][2]*R[i][2]);
     r = r / norm;
     Rs[i] = Mat::eye(3, 3, CV_64FC1) + sin(norm) * r + (1.0-cos(norm)) * r * r;
+    cerr << Rs[i] << endl;
     transpose(Rs[i], R_Ts[i]);
     Ks[i] = (Mat_<double>(3, 3) << K[i][0], 0, 0,
                                      0, K[i][0], 0,
                                      0, 0, 1);
+    cerr << Ks[i] << endl;
+    cerr << "####################" << endl;
   }
   //for(size_t p1 = 0; p1<pic_num; ++p1)
   //  for(size_t p2 = p1+1; p2<pic_num; ++p2)

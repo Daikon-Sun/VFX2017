@@ -1,0 +1,96 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,  margin=1in]{geometry}
+\usepackage{enumitem}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{algorithm}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
+\usepackage{listings}
+\usepackage{amssymb}
+\usepackage{tikz}
+\usepackage{pgfplots}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{codebg}{rgb}{0.95,0.95,0.9}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=tb,
+  rulecolor=\color{codebg},
+  backgroundcolor=\color{codebg},
+  language=C++,
+  aboveskip=3mm,
+  belowskip=-0.5mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  morekeywords={vector},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3
+}
+
+\maxdeadcycles=100
+
+\graphicspath{{pic/}}
+\setlength\parskip{6pt}
+\setlength\parindent{0pt}
+\setlength\intextsep{9pt}
+\linespread{1}
+\renewcommand{\refname}{\vspace{-30pt}}
+\renewcommand\floatpagefraction{0.85}
+\newcommand*{\equal}{=}
+
+\title{\bf{VFX Project 2\\\large{Image Stitching}}\vspace{-10pt}}
+\author{B03901056 Fan-Keng Sun, B03901119 Shang-Wei Chen}
+\date{}
+  
+\begin{document}
+\maketitle
+\section{Description}
+In this project, we construct panoramas from a series of photographs. Run through following feature-based process to create panoramas.
+\begin{itemize}
+  \itemsep=0pt
+  \item Feature detection and matching: scale invariant feature transform (SIFT) or multi-scale oriented patches (MSOP), with the aid of exhaustive search.
+  \item Image matching: 
+  \item Bundle adjustment: 
+  \item Blending:
+\end{itemize}
+\section{Implementation}
+\subsection{Environment}
+\begin{itemize}
+  \itemsep=0pt
+  \item Camera: Sony A6000 (lens: Sony SELP 18-105mm G)
+  \item OS: Linux (Archlinux 4.10, Ubuntu 16.04)
+  \item Tools/Libraries: gcc/g++ 6.3.1, OpenCV 3.2 (C++), Boost $\geq$ 1.5, Cmake $\geq$ 3.0, Ceres, Eigen3
+\end{itemize}
+
+\subsection{Multi-Scale Oriented Patches}
+
+
+\begin{algorithm}
+\caption{MSOP algorithm for feature detection \cite{ref:msop}}
+\begin{algorithmic}
+\State $imgs\gets$ gray-scale photos
+\Function{MsopFeatureDetection}{$imgs$}
+  \ForAll{$img$ in $imgs$}
+  \State $pyr\gets$ build gaussian pyramid of $img$ 
+    \For{$lev$ in range($max\_level$)}
+      
+    \EndFor
+  \EndFor
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\section{Reference}
+\bibliographystyle{unsrt}
+\end{document}

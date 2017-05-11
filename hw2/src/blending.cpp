@@ -182,6 +182,7 @@ void BLENDING::multi_band() {
       b[BAND_NUM-1] = p[BAND_NUM-1].clone();
     }
 
+
     Mat& show = outputs[pic];
     vector<Mat> res;
     show = Mat::zeros(sz, CV_64FC3);
@@ -206,6 +207,28 @@ void BLENDING::multi_band() {
 
     for (int b = 0; b < BAND_NUM; ++b)
       show += res[b];
+
+    /*
+    Mat& show = outputs[pic];
+    show = Mat::zeros(sz, CV_64FC3);
+
+    for (int b = 0; b < BAND_NUM; ++b) {
+      Mat res = Mat::zeros(sz, CV_64FC1);
+      Mat sum = Mat::zeros(sz, CV_64FC1);
+      for (int i = 0; i < img_num; ++i) 
+      for (int x = 0, xn = weight[0][0].cols; x < xn; ++x)
+      for (int y = 0, yn = weight[0][0].rows; y < yn; ++y) {
+        res.at<Vec3d>(y,x) += (band[i][b].at<Vec3d>(y,x)) * weight[i][b].at<double>(y,x);
+        sum.at<double>(y,x) += weight[i][b].at<double>(y,x);
+      }
+      for (int i = 0; i < img_num; ++i) 
+      for (int x = 0, xn = weight[0][0].cols; x < xn; ++x)
+      for (int y = 0, yn = weight[0][0].rows; y < yn; ++y) {
+        res.at<Vec3d>(y,x) /= sum.at<double>(y,x);
+      }
+      show += res;
+    }*/
+
     show.convertTo(show, CV_8UC3);
   }
 }

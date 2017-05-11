@@ -34,9 +34,9 @@ int stitching_mode = 0;
 Paras all_stitching_para = {{5000, 2}, {5000, 2}, {5000, 2}, {5}, {5, 520}};
 vector<int> stitching_cnt = {2, 2, 2, 1, 2};
 
-int blending_mode = 0;
-Paras all_blending_para = {{}};
-vector<int> blending_cnt = {0};
+int blending_mode = 1;
+Paras all_blending_para = {{}, {}};
+vector<int> blending_cnt = {0, 0};
 
 string in_list = "input_images.txt";
 string out_prefix = "result/out";

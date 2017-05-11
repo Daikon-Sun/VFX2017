@@ -81,7 +81,7 @@ void PANORAMA::process() {
   //blending
   typedef void(BLENDING::*type5)();
   vector<type5> blendings = {&BLENDING::average,
-                             &BLENDING::linear};
+                             &BLENDING::multi_band};
   execute<type5>(blendings[_blending_mode]);
 
   if(_verbose) visualize();

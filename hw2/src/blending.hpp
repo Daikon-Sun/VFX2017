@@ -8,6 +8,7 @@ public:
     : imgs(i), shift(s), order(ord), outputs(ou) {};
   void average();
   void linear();
+  void multi_band();
 private:
   void straightening();
   pair<Point2d, Point2d> get_corner(const Mat&, const Mat&);

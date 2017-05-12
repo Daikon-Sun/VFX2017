@@ -21,11 +21,14 @@ To see simple help message, simply type:
 Here is a detailed explanation of parameters:
 ```
 All Available Options in VFX2017 hw2 project:
+ll Available Options in VFX2017 hw2 project:
   -h [ --help ]                         Print help message.
   -i [ --in_list ] arg (=input_images.txt)
                                         List of all input images. (Image names 
                                         should be seperated by any spaces.)
-  -o [ --out_prefix ] arg (=result/out) Output prefix of the panorama images.
+  -o [ --out_prefix ] arg (=result/out) Output prefix of the panorama images 
+                                        (Images for will be named as: 
+                                        out_prefix0.jpg, out_prefix1.jpg...).
   -v [ --verbose ] [=arg(=True)]        Visualize the final result.
   -p [ --panorama ] arg (=1)            modes of generating panorama:
                                           0: linear ordering(n) (The program 
@@ -37,10 +40,13 @@ All Available Options in VFX2017 hw2 project:
                                              images in any order and recognise 
                                              all scenes to produce one panorama
                                              for a single scene
+                                        
   -d [ --detection ] arg (=1)           modes of feature detection:
                                           0: MSOP (Multi-Scale Oriented Patches
                                           1: SIFT (Scale Invariant Feature 
                                              Transform
+                                        
+                                        
   -m [ --matching ] arg (=1)            modes of feature matching:
                                           0: exhaustive search
                                           1: HAAR wavelet-based hashing
@@ -55,6 +61,8 @@ All Available Options in VFX2017 hw2 project:
                                         (2, maximum y-coordinate displacement 
                                         for geometric constraint)
                                           2: NONE
+                                        
+                                        
   -j [ --projection ] arg (=1)          Types of projection:
                                           0: none
                                           1: cylindrical
@@ -62,6 +70,8 @@ All Available Options in VFX2017 hw2 project:
                                         type.
                                           0: NONE
                                           1: (0, focal length)
+                                        
+                                        
   -s [ --stitching ] arg (=4)           modes of image stitching:
                                           0: translation
                                           1: translation + estimate focal 
@@ -79,6 +89,8 @@ All Available Options in VFX2017 hw2 project:
                                         (1, estimated focal length (nonzero) 
                                         for initialization of bundle 
                                         adjustment)
+                                        
+                                        
   -b [ --blending ] arg (=1)            modes of blending:
                                           0: average (simple average of 
                                              overlapping region)
@@ -86,6 +98,7 @@ All Available Options in VFX2017 hw2 project:
   --blending_para arg                   Parameters of the chosen blending mode.
                                           0: NONE
                                           1: (0, number of bands)
+
 ```
 For example, `./main -i input_images.txt -o result/out -v -p 1 -d 1 -m 2 -j 1 
 --projection_para 2000 -s 4 --stitching_para 5 2000 --blending_para 4` will be 

@@ -21,6 +21,7 @@ PANORAMA::PANORAMA(const string& in_list, const string& out_prefix,
                    const Para& matching_para,
                    const Para& projection_para,
                    const Para& stitching_para,
+                   const Para& blending_para,
                    const bool& verbose)
                   : _panorama_mode(panorama_mode),
                     _detection_mode(detection_mode),
@@ -36,7 +37,7 @@ PANORAMA::PANORAMA(const string& in_list, const string& out_prefix,
                     PROJECTION(projection_para, _imgs, _keypoints),
                     STITCHING(panorama_mode, stitching_para, _imgs,
                               _keypoints, _match_pairs, _shift, _order),
-                    BLENDING(_imgs, _shift, _order, _outputs) {
+                    BLENDING(blending_para, _imgs, _shift, _order, _outputs) {
   ifstream ifs(in_list, ifstream::in);
   string fname;
   while(ifs >> fname) {

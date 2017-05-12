@@ -12,7 +12,8 @@ class PANORAMA : public DETECTION, public MATCHING, public PROJECTION,
 public:
   PANORAMA(const string&, const string&, 
            const int&, const int&, const int&, const int&, const int&, 
-           const int&, const Para&, const Para&, const Para&, const bool&);
+           const int&, const Para&, const Para&, const Para&, const Para&,
+           const bool&);
   void process();
 private:
   template<typename T> void execute(const T& f);

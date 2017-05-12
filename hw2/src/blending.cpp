@@ -105,7 +105,6 @@ void BLENDING::average() {
     show.convertTo(show, CV_8UC3);
   }
 }
-constexpr int BAND_NUM = 3;
 constexpr int SIGMA = 5;
 void BLENDING::multi_band() {
   cerr << __func__;
@@ -136,10 +135,10 @@ void BLENDING::multi_band() {
     band.resize(img_num);
     #pragma omp parallel for
     for (int i = 0; i < img_num; ++i) {
-      weight[i].resize(BAND_NUM);
+      weight[i].resize(_para[0]);
       weight[i][0] = Mat::zeros(sz, CV_64FC1);
-      img[i].resize(BAND_NUM);
-      band[i].resize(BAND_NUM);
+      img[i].resize(_para[0]);
+      band[i].resize(_para[0]);
       const int& p = ord[i].first;
       shift[p][p].at<double>(0, 2) -= mnx;
       shift[p][p].at<double>(1, 2) -= mny;
@@ -175,23 +174,23 @@ void BLENDING::multi_band() {
     for (int i = 0; i < img_num; ++i) {
       auto &p = img[i], &b = band[i], &w = weight[i];
       GaussianBlur(w[0], w[0], Size(0,0), SIGMA, SIGMA);
-      for (int lev = 1; lev < BAND_NUM; ++lev) {
+      for (int lev = 1; lev < _para[0]; ++lev) {
         GaussianBlur(p[lev-1], p[lev], Size(0,0), sqrt(2*lev-1)*SIGMA, 
                      sqrt(2*lev-1)*SIGMA);
         GaussianBlur(w[lev-1], w[lev], Size(0,0), sqrt(2*lev+1)*SIGMA,
                      sqrt(2*lev+1)*SIGMA);
         b[lev-1] = p[lev-1] - p[lev];
       }
-      b[BAND_NUM-1] = p[BAND_NUM-1].clone();
+      b[_para[0]-1] = p[_para[0]-1].clone();
     }
     Mat& show = outputs[pic];
     vector<Mat> res;
     show = Mat::zeros(sz, CV_64FC3);
-    for (int b = 0; b < BAND_NUM; ++b) 
+    for (int b = 0; b < _para[0]; ++b) 
       res.push_back(Mat::zeros(sz, CV_64FC3));
 
     #pragma omp parallel for
-    for (int b = 0; b < BAND_NUM; ++b) {
+    for (int b = 0; b < int(_para[0]); ++b) {
       Mat sum = Mat::zeros(sz, CV_64FC3);
       for (int i = 0; i < img_num; ++i) {
         Mat weight3;
@@ -202,14 +201,14 @@ void BLENDING::multi_band() {
       }
       divide(res[b], sum, res[b]);
     }
-    for (int b = 0; b < BAND_NUM; ++b)
+    for (int b = 0; b < _para[0]; ++b)
       show += res[b];
 
     /*
     Mat& show = outputs[pic];
     show = Mat::zeros(sz, CV_64FC3);
 
-    for (int b = 0; b < BAND_NUM; ++b) {
+    for (int b = 0; b < _para[0]; ++b) {
       Mat res = Mat::zeros(sz, CV_64FC1);
       Mat sum = Mat::zeros(sz, CV_64FC1);
       for (int i = 0; i < img_num; ++i) 

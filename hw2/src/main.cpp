@@ -60,6 +60,7 @@ int main(int argc, char** argv) {
                     all_matching_para[matching_mode],
                     all_projection_para[projection_mode],
                     all_stitching_para[stitching_mode],
+                    all_blending_para[blending_mode],
                     verbose);
   panorama.process();
 

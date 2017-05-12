@@ -182,7 +182,7 @@ void MATCHING::FLANN() {
         match_pairs[p1][p2].emplace_back(match.queryIdx, match.trainIdx);
       if(!panorama_mode) break;
     }
-  show_match();
+  //show_match();
 }
 bool MATCHING::check_match_haar(const tuple<int, int, double>& mp, 
                            size_t p1, size_t p2, double sec_mn) const {

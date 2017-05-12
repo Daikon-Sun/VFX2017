@@ -13,6 +13,7 @@
 \usepackage{tikz}
 \usepackage{pgfplots}
 
+\pgfplotsset{compat=1.13}
 \definecolor{dkgreen}{rgb}{0,0.6,0}
 \definecolor{gray}{rgb}{0.5,0.5,0.5}
 \definecolor{codebg}{rgb}{0.95,0.95,0.9}
@@ -56,13 +57,14 @@
 \begin{document}
 \maketitle
 \section{Description}
-In this project, we construct panoramas from a series of photographs. Run through following feature-based process to create panoramas.
+In this project, we construct panoramas from a series of photographs. Run through following feature-based process in the order to create panoramas \cite{ref:panorama}.
 \begin{itemize}
   \itemsep=0pt
-  \item Feature detection and matching: scale invariant feature transform (SIFT) or multi-scale oriented patches (MSOP), with the aid of exhaustive search.
-  \item Image matching: 
-  \item Bundle adjustment: 
-  \item Blending:
+  \item Feature detection: scale invariant feature transform (SIFT) or multi-scale oriented patches (MSOP), with the aid of exhaustive search.
+  \item Feature matching: exhaustive search and Haar's method.
+  \item Projection: cylindrical projection.
+  \item Image stitching: bundle adjustment.
+  \item Blending: multi-band blending.
 \end{itemize}
 \section{Implementation}
 \subsection{Environment}
@@ -73,24 +75,113 @@ In this project, we construct panoramas from a series of photographs. Run throug
   \item Tools/Libraries: gcc/g++ 6.3.1, OpenCV 3.2 (C++), Boost $\geq$ 1.5, Cmake $\geq$ 3.0, Ceres, Eigen3
 \end{itemize}
 
-\subsection{Multi-Scale Oriented Patches}
-
-
+\subsection{Feature Detection}
+For feature detection, we have implemented both MSOP and SIFT to gather feature descriptors. MSOP method is easier to be implemented; though, it neglects keypoints that are near the edges, which cannot retreive sufficient amount of pixels for constructing descriptors. SIFT is intricate, but it brings about better performance. Both MSOP and SIFT algorithms are shown in the following paragraphs.
 \begin{algorithm}
 \caption{MSOP algorithm for feature detection \cite{ref:msop}}
 \begin{algorithmic}
-\State $imgs\gets$ gray-scale photos
 \Function{MsopFeatureDetection}{$imgs$}
   \ForAll{$img$ in $imgs$}
-  \State $pyr\gets$ build gaussian pyramid of $img$ 
+  \State $pyr \gets$ build gaussian pyramid of $img$ 
     \For{$lev$ in range($max\_level$)}
-      
+      \State $kpt[lev]\gets$ find possible keypoints by multi-scale Harris corner detecter
+      \State apply ANMS method for filtering keypoints to be uniform-distributed.
+      \State apply sub-pixel refinement to keypoints
+      \State assign orientation to each keypoint
+      \State $desc[lev]\gets$ MSOP feature descriptor
     \EndFor
   \EndFor
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
 
+\begin{algorithm}
+\caption{SIFT algorithm for feature detection \cite{ref:sift}}
+\begin{algorithmic}
+\Function{SiftFeatureDetection}{$imgs$}
+  \ForAll{$img$ in $imgs$}
+  \State $G, DoG\gets$ build Gaussian and difference of Gaussian octaves
+  \For{$lev$ in range($max\_level$)}
+    \State $kpts\gets$ local extrema in $DoG[lev]$
+    \State $kpts$ do discarding low contrast and curvature
+    \State assign orientation to each keypoint
+    \State $desc[lev]\gets$ SIFT feature descriptor
+    \EndFor
+  \EndFor
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{Hashing algorithm for feature matching}
+\begin{algorithmic}
+\Function{HaarFeatureMatching}{$imgs$}
+  \State $bins\gets$ new hashing buckets
+  \ForAll{$img$ in $imgs$}
+    \For{$lev$ in range($max\_level$)}
+      \ForAll{$patch$ in $img.desc[lev]$}
+        \State $d\gets$ transform $patch$ using a Haar wavelet
+        \State push this keypoint into $bins[d]$
+      \EndFor
+    \EndFor
+  \EndFor
+  \State $matched\gets$ new container for storing matched keypoint pairs
+  \ForAll{$bin$ in $bins$}
+    \ForAll{$kpt\_i, kpt\_j$ in $bin$}
+      \If{$pair(kpt\_i, kpt\_j)$ has minimum error}
+        \State push $pair(kpt\_i, kpt\_j)$ into $matched$
+      \EndIf
+    \EndFor
+  \EndFor
+  \State\Return $matched$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Feature Matching}
+For feature matching, we have implemented exhaustive search and  Haar wavelet-based hashing to match feature descriptors. Exhaustive search may cost much time to compute matching pairs, and it shows no much better accuracy of matching. Haar wavelet-based hashing transforms descriptor patches to short 3-vector descriptors, and then quantizes each value into 10 overlapping bins in every dimensions ($10^3$ total entries).
+
+\subsection{Image Projection}
+Rectilinear projection may cause dramatic distortion when stitching images, so cylindrical projection is applied to fix the problem. In our case, simply doing cylindrical projection cannot smoothen intersection connectivities enough when stitching. To fix the problem, we apply cylindrical projection in both vertical and horizontal direction.
+
+\subsection{Image Stitching}
+
+\subsection{Blending}
+Converting the image into high and low frequency images, multi-band blending shows a good recovery for edge connection. The algorithm is shown below.
+
+\begin{algorithm}
+\caption{Multi-band blending algorithm}
+\begin{algorithmic}
+\State $imgs\gets$ images after warping perspective
+\Function{MultiBandBlending}{$imgs$}
+  \State $w\_origin\gets$ an array of linearly weighted function for each images
+  \State $output, w\_sum\gets$ blank image arrays
+  \For{$i$ in range($imgs.size$)}
+    \ForAll{pixel $p$ in $w\_origin[i]$}
+      \If{$w\_origin[i].p==\arg\max_n\{w\_origin[n].p\}$}
+      \State $w\_max[i].p\gets$ 1
+      \Else
+      \State $w\_max[i].p\gets$ 0
+      \EndIf
+    \EndFor
+    \State $band[i]\gets$ split $imgs[i]$ into different bands
+    \State $w[i]\gets$ compute blurred weight function corresponding to different bands
+  \EndFor
+  \ForAll{$layer$ in range($band\_num$)}
+    \For{$i$ in range($imgs.size$)}
+      \State $output[layer]\gets output[layer]+band[i][layer]*w[i][layer]$
+      \State $w\_sum[layer]\gets w\_sum[layer]+w[i][layer]$
+    \EndFor
+    \State $output[layer]\gets output[layer]/w\_sum[layer]$
+  \EndFor
+  \State $result\gets$ merge layers in $output$
+  \State \Return $result$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+
 \section{Reference}
 \bibliographystyle{unsrt}
+\bibliography{hw2}
 \end{document}

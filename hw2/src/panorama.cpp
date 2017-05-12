@@ -63,7 +63,9 @@ void PANORAMA::process() {
   execute<type1>(detections[_detection_mode]);
   //feature matching
   typedef void (MATCHING::*type2)();
-  vector<type2> matchings = {&MATCHING::exhaustive, &MATCHING::HAAR};
+  vector<type2> matchings = {&MATCHING::exhaustive,
+                             &MATCHING::HAAR,
+                             &MATCHING::FLANN};
   execute<type2>(matchings[_matching_mode]);
   //projection of both images and features
   typedef void(PROJECTION::*type3)();

@@ -6,6 +6,7 @@ public:
   MATCHING(const int&, const vector<double>&, const vector<Mat>&, 
            vector<vector<Keypoint>>&, vector<vector<vector<pair<int,int>>>>&);
   void HAAR();
+  void FLANN();
   void exhaustive();
 private:
   void show_match();

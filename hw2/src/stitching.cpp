@@ -195,7 +195,7 @@ void STITCHING::homography() {
   vector<vector<pair<int, int>>> in_cnt(pic_num, vector<pair<int,int>>(pic_num));
   shift.clear();
   shift.resize(pic_num, vector<Mat>(pic_num));
-  //#pragma omp parallel for 
+  #pragma omp parallel for 
   for(size_t p1 = 0; p1<pic_num; ++p1) {
     shift[p1][p1] = Mat::eye(3, 3, CV_64FC1);
     for(size_t p2 = p1+1; p2<pic_num; ++p2) {
@@ -304,7 +304,6 @@ void STITCHING::gen_order() {
       int p1 = i, p2 = in_cnt[i][j].second;
       if(p1 > p2) swap(p1, p2);
       if(in_cnt[i][j].first > 5.9+0.22*match_pairs[p1][p2].size()) {
-        cerr << p1 << " " << p2 << endl;
         edges[p1].insert(p2);
         edges[p2].insert(p1);
         cnt_all[p1].first += in_cnt[i][j].first;
@@ -336,6 +335,8 @@ void STITCHING::gen_order() {
 void STITCHING::autostitch() {
   cerr << __func__;
   gen_order();
+  //for(auto& y : order) for(auto x:y)
+  //  cerr << x.first << " " << x.second << endl;
 
   size_t pic_num = imgs.size();
   using ceres::AutoDiffCostFunction;
@@ -358,7 +359,6 @@ void STITCHING::autostitch() {
       K[ord[en].first][0] = K[ord[en].second][0];
       group.push_back(ord[en].first);
       ++en;
-      cerr << "END: " << en << endl;
 
       Problem problem;
       ceres::LossFunctionWrapper* loss_func =
@@ -381,7 +381,7 @@ void STITCHING::autostitch() {
           }
         }
       }
-      const int tot_iter = (ord.size()-en)+8, max_iter = 160;
+      const int tot_iter = (ord.size()-en)+8, max_iter = 500;
       Solver::Options options;
       options.max_num_iterations = max_iter;
       options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
@@ -396,54 +396,30 @@ void STITCHING::autostitch() {
       }
       cerr << summary.FullReport() << endl;
     }
-    //for(size_t i = 0; i<pic_num; ++i) {
-    //  cerr << i << endl;
-    //  for(size_t j = 0; j<3; ++j) cerr << R[i][j] << " ";
-    //  cerr << K[i][0] << endl;
-    //  cerr << "#####################" << endl;
-    //}
+    for(size_t i = 0; i<pic_num; ++i) {
+      cerr << i << endl;
+      for(size_t j = 0; j<3; ++j) cerr << R[i][j] << " ";
+      cerr << K[i][0] << endl;
+      cerr << "#####################" << endl;
+    }
   }
   vector<Mat> Rs(pic_num), Ks(pic_num), R_Ts(pic_num);
-  //#pragma omp parallel for
+  #pragma omp parallel for
   for(size_t i = 0; i<pic_num; ++i) {
-    cerr << i << endl;
     Mat r = (Mat_<double>(3, 3) << 0, -R[i][2], R[i][1],
                                     R[i][2], 0, -R[i][0],
                                     -R[i][1], R[i][0], 0);
     double norm = sqrt(R[i][0]*R[i][0] + R[i][1]*R[i][1] + R[i][2]*R[i][2]);
     r = r / norm;
     Rs[i] = Mat::eye(3, 3, CV_64FC1) + sin(norm) * r + (1.0-cos(norm)) * r * r;
-    cerr << Rs[i] << endl;
     transpose(Rs[i], R_Ts[i]);
     Ks[i] = (Mat_<double>(3, 3) << K[i][0], 0, 0,
                                      0, K[i][0], 0,
                                      0, 0, 1);
-    cerr << Ks[i] << endl;
-    cerr << "####################" << endl;
   }
-  //for(size_t p1 = 0; p1<pic_num; ++p1)
-  //  for(size_t p2 = p1+1; p2<pic_num; ++p2)
-  //    for(auto& keypair : inners[p1][p2]) {
-  //      int k1, k2; tie(k1, k2) = keypair;
-  //      const auto& kp1 = keypoints[p1][k1];
-  //      const auto& kp2 = keypoints[p2][k2];
-  //      cerr << "GT1   " << kp1.x << " " << kp1.y << endl;
-  //      Mat pos21 = Ks[p1]*Rs[p1]*R_Ts[p2]*Ks[p2].inv()
-  //                 *(Mat_<double>(3, 1) << kp2.x, kp2.y, 1);
-	//	    pos21.at<double>(0, 0) /= pos21.at<double>(2, 0);	
-	//	    pos21.at<double>(1, 0) /= pos21.at<double>(2, 0);	
-  //      cerr << "PRED1 " << pos21.at<double>(0, 0) 
-  //           << " " << pos21.at<double>(1, 0) << endl;
-
-  //      Mat pos12 = Ks[p2]*Rs[p2]*R_Ts[p1]*Ks[p1].inv()
-  //      cerr << "GT2   " << kp2.x << " " << kp2.y << endl;
-  //                 *(Mat_<double>(3, 1) << kp1.x, kp1.y, 1);
-	//	    pos12.at<double>(0, 0) /= pos12.at<double>(2, 0);	
-	//	    pos12.at<double>(1, 0) /= pos12.at<double>(2, 0);	
-  //      cerr << "PRED2 " << pos12.at<double>(0, 0) 
-  //           << " " << pos12.at<double>(1, 0) << endl;
-  //    }
-  for(const auto& ord : order) {
+  #pragma omp parallel for
+  for(size_t i = 0; i<order.size(); ++i) {
+    const auto& ord = order[i];
     int root = ord[0].first;
     for(auto it = ++ord.begin(); it != ord.end(); ++it) {
       int p1 = it->first, p2 = it->second;

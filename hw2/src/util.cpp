@@ -40,7 +40,8 @@ int parse(int ac, char** av) {
        "List of all input images. (Image names should be seperated by any "
        "spaces.)")
       ("out_prefix,o", value<string>(&out_prefix)->default_value(out_prefix),
-       "Output prefix of the panorama images.")
+       "Output prefix of the panorama images (Images for will be named as: "
+       "out_prefix0.jpg, out_prefix1.jpg...).")
       ("verbose,v", value<bool>()
        ->implicit_value(verbose, verbose?"True":"False")->composing(),
        "Visualize the final result.")

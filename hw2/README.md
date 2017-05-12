@@ -21,7 +21,6 @@ To see simple help message, simply type:
 Here is a detailed explanation of parameters:
 ```
 All Available Options in VFX2017 hw2 project:
-ll Available Options in VFX2017 hw2 project:
   -h [ --help ]                         Print help message.
   -i [ --in_list ] arg (=input_images.txt)
                                         List of all input images. (Image names 

@@ -11,7 +11,8 @@ typedef vector<double> Para;
 
 #include "panorama.hpp"
 
-PANORAMA::PANORAMA(const string& in_list, const string& out_prefix, 
+PANORAMA::PANORAMA(const string& in_list, const string& out_prefix,
+                   const double& zoom,
                    const int& panorama_mode,
                    const int& detection_mode,
                    const int& matching_mode,
@@ -42,7 +43,7 @@ PANORAMA::PANORAMA(const string& in_list, const string& out_prefix,
   string fname;
   while(ifs >> fname) {
     Mat tmp = imread(fname, IMREAD_COLOR);
-    resize(tmp, tmp, Size(), 0.1, 0.1);
+    resize(tmp, tmp, Size(), zoom, zoom);
     _imgs.push_back(tmp.clone());
   }
 };

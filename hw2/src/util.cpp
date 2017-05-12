@@ -21,6 +21,7 @@ extern int projection_mode, stitching_mode, blending_mode;
 extern vector<int> matching_cnt, projection_cnt, stitching_cnt, blending_cnt;
 extern string in_list, out_prefix;
 extern bool verbose;
+extern double zoom;
 
 bool check(const vector<double>& para, const string& name,
            const int& cnt, const string& info) {
@@ -45,6 +46,10 @@ int parse(int ac, char** av) {
       ("verbose,v", value<bool>()
        ->implicit_value(verbose, verbose?"True":"False")->composing(),
        "Visualize the final result.")
+      ("zoom,z", value<double>(&zoom)->default_value(zoom),
+       "Scale the image according to this value before processing to achieve "
+       "faster result and use lesser memory. For example: a [6000x4000] image "
+       "with zoom = 0.2 will become a [1200x800] image.")
       ("panorama,p",
        value<int>(&panorama_mode)->default_value(panorama_mode),
        "modes of generating panorama:\n"

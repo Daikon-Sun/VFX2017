@@ -42,6 +42,7 @@ string in_list = "input_images.txt";
 string out_prefix = "result/out";
 int detection = 0;
 bool verbose = true;
+double zoom = 0.3;
 
 int main(int argc, char** argv) {
   srand(time(NULL));
@@ -50,7 +51,7 @@ int main(int argc, char** argv) {
   if(!state) return 0;
   else if(state < 0) return 1;
 
-  PANORAMA panorama(in_list, out_prefix,
+  PANORAMA panorama(in_list, out_prefix, zoom,
                     panorama_mode,
                     detection_mode,
                     matching_mode,

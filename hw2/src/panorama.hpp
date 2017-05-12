@@ -10,7 +10,7 @@
 class PANORAMA : public DETECTION, public MATCHING, public PROJECTION, 
                  public STITCHING, public BLENDING {
 public:
-  PANORAMA(const string&, const string&, 
+  PANORAMA(const string&, const string&, const double&,
            const int&, const int&, const int&, const int&, const int&, 
            const int&, const Para&, const Para&, const Para&, const Para&,
            const bool&);

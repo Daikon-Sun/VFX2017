@@ -11,7 +11,8 @@
 ## How to make:
 Type `cmake .` under `VFX2017/hw2` directory and a `Makefile` will be created.
 Then, type `make` and finally a `main` executable will be created.
-To see our report, cd to `report` then type `make` then a `hw2.pdf` will be created.
+To see our report, cd to `report` then type `make` then a `hw2.pdf` will be 
+created.
 
 ## Usage
 To see simple help message, simply type:
@@ -29,6 +30,12 @@ All Available Options in VFX2017 hw2 project:
                                         (Images for will be named as: 
                                         out_prefix0.jpg, out_prefix1.jpg...).
   -v [ --verbose ] [=arg(=True)]        Visualize the final result.
+  -z [ --zoom ] arg (=0.29999999999999999)
+                                        Scale the image according to this value
+                                        before processing to achieve faster 
+                                        result and use lesser memory. For 
+                                        example: a [6000x4000] image with zoom 
+                                        = 0.2 will become a [1200x800] image.
   -p [ --panorama ] arg (=1)            modes of generating panorama:
                                           0: linear ordering(n) (The program 
                                              will stitch the images according 
@@ -44,9 +51,7 @@ All Available Options in VFX2017 hw2 project:
                                           0: MSOP (Multi-Scale Oriented Patches
                                           1: SIFT (Scale Invariant Feature 
                                              Transform
-                                        
-                                        
-  -m [ --matching ] arg (=1)            modes of feature matching:
+  -m [ --matching ] arg (=2)            modes of feature matching:
                                           0: exhaustive search
                                           1: HAAR wavelet-based hashing
                                           2: FLANN (Fast Library for 
@@ -60,8 +65,6 @@ All Available Options in VFX2017 hw2 project:
                                         (2, maximum y-coordinate displacement 
                                         for geometric constraint)
                                           2: NONE
-                                        
-                                        
   -j [ --projection ] arg (=1)          Types of projection:
                                           0: none
                                           1: cylindrical
@@ -69,8 +72,6 @@ All Available Options in VFX2017 hw2 project:
                                         type.
                                           0: NONE
                                           1: (0, focal length)
-                                        
-                                        
   -s [ --stitching ] arg (=4)           modes of image stitching:
                                           0: translation
                                           1: translation + estimate focal 
@@ -88,8 +89,6 @@ All Available Options in VFX2017 hw2 project:
                                         (1, estimated focal length (nonzero) 
                                         for initialization of bundle 
                                         adjustment)
-                                        
-                                        
   -b [ --blending ] arg (=1)            modes of blending:
                                           0: average (simple average of 
                                              overlapping region)
@@ -97,7 +96,6 @@ All Available Options in VFX2017 hw2 project:
   --blending_para arg                   Parameters of the chosen blending mode.
                                           0: NONE
                                           1: (0, number of bands)
-
 ```
 For example, `./main -i input_images.txt -o result/out -v -p 1 -d 1 -m 2 -j 1 
 --projection_para 2000 -s 4 --stitching_para 5 2000 --blending_para 4` will be 

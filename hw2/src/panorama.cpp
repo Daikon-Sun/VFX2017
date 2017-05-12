@@ -11,7 +11,8 @@ typedef vector<double> Para;
 
 #include "panorama.hpp"
 
-PANORAMA::PANORAMA(const string& in_list, const string& out_prefix, 
+PANORAMA::PANORAMA(const string& in_list, const string& out_prefix,
+                   const double& zoom,
                    const int& panorama_mode,
                    const int& detection_mode,
                    const int& matching_mode,
@@ -21,6 +22,7 @@ PANORAMA::PANORAMA(const string& in_list, const string& out_prefix,
                    const Para& matching_para,
                    const Para& projection_para,
                    const Para& stitching_para,
+                   const Para& blending_para,
                    const bool& verbose)
                   : _panorama_mode(panorama_mode),
                     _detection_mode(detection_mode),
@@ -36,12 +38,12 @@ PANORAMA::PANORAMA(const string& in_list, const string& out_prefix,
                     PROJECTION(projection_para, _imgs, _keypoints),
                     STITCHING(panorama_mode, stitching_para, _imgs,
                               _keypoints, _match_pairs, _shift, _order),
-                    BLENDING(_imgs, _shift, _order, _outputs) {
+                    BLENDING(blending_para, _imgs, _shift, _order, _outputs) {
   ifstream ifs(in_list, ifstream::in);
   string fname;
   while(ifs >> fname) {
     Mat tmp = imread(fname, IMREAD_COLOR);
-    resize(tmp, tmp, Size(), 0.2, 0.2);
+    resize(tmp, tmp, Size(), zoom, zoom);
     _imgs.push_back(tmp.clone());
   }
 };
@@ -63,7 +65,9 @@ void PANORAMA::process() {
   execute<type1>(detections[_detection_mode]);
   //feature matching
   typedef void (MATCHING::*type2)();
-  vector<type2> matchings = {&MATCHING::exhaustive, &MATCHING::HAAR};
+  vector<type2> matchings = {&MATCHING::exhaustive,
+                             &MATCHING::HAAR,
+                             &MATCHING::FLANN};
   execute<type2>(matchings[_matching_mode]);
   //projection of both images and features
   typedef void(PROJECTION::*type3)();

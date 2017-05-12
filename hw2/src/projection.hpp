@@ -10,7 +10,7 @@ public:
   void no_projection();
   void set_focal_length(double);
 private:
-  pair<double, double> projected_xy(double, double, double, double);
+  pair<double, double> projected_xy(size_t, double, double, double, double);
   vector<double> _para;
   vector<Mat>& imgs;
   vector< vector<Keypoint> >& keypoints;

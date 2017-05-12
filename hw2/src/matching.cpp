@@ -150,6 +150,38 @@ void MATCHING::exhaustive() {
       }
       if(!panorama_mode) break;
     }
+}
+void MATCHING::FLANN() {
+  cerr << __func__;
+  size_t pic_num = keypoints.size();
+  vector<Mat> descs(pic_num);
+  for(size_t p = 0; p<pic_num; ++p) {
+    Mat desc = Mat::zeros(keypoints[p].size(), keypoints[p][0].patch.total(),
+                          CV_64FC1);
+    for(size_t i = 0; i<keypoints[p].size(); ++i)
+      keypoints[p][i].patch.reshape(1, 1).copyTo(desc.row(i));
+    desc.convertTo(desc, CV_32FC1);
+    desc.copyTo(descs[p]);
+  }
+  match_pairs.clear();
+  match_pairs.resize(pic_num, vector<vector<pair<int,int>>>(pic_num));
+  #pragma omp parallel for
+  for(size_t p1 = 0; p1<pic_num; ++p1)
+    for(size_t p2 = p1+1; p2<pic_num; ++p2) {
+      vector<DMatch> matches;
+      FlannBasedMatcher matcher;
+      matcher.match(descs[p1], descs[p2], matches);
+      double min_dist = DBL_MAX;
+      for(int i = 0; i<descs[p1].rows; ++i)
+        if(matches[i].distance < min_dist) min_dist = matches[i].distance;
+      vector<DMatch> good_matches;
+      for(int i = 0; i<descs[p1].rows; ++i)
+        if(matches[i].distance <= max(1.3*min_dist, 5.0))
+          good_matches.push_back(matches[i]);
+      for(auto& match : good_matches)
+        match_pairs[p1][p2].emplace_back(match.queryIdx, match.trainIdx);
+      if(!panorama_mode) break;
+    }
   //show_match();
 }
 bool MATCHING::check_match_haar(const tuple<int, int, double>& mp, 
@@ -158,7 +190,6 @@ bool MATCHING::check_match_haar(const tuple<int, int, double>& mp,
   const auto& kj = keypoints[p2][pj];
   double fir = DBL_MAX, sec = DBL_MAX;
   int fir_i = -1;
-  //#pragma omp parallel for
   for(size_t pi = 0; pi<keypoints[p1].size(); ++pi) {
     const auto& ki = keypoints[p1][pi];
     Mat diff = ki.patch - kj.patch;

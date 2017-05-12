@@ -105,14 +105,13 @@ void BLENDING::average() {
     show.convertTo(show, CV_8UC3);
   }
 }
+constexpr int SIGMA = 5;
 void BLENDING::multi_band() {
   cerr << __func__;
   int pic_num = order.size();
   outputs.resize(pic_num);
 
-  int BAND_NUM = 5;
-  int SIGMA = 5;
-
+  #pragma omp parallel for
   for (int pic = 0; pic < pic_num; ++pic) {
     const auto& ord = order[pic];
     int img_num = ord.size();
@@ -128,21 +127,23 @@ void BLENDING::multi_band() {
       mxy = max(mxy, pt2.y);
     }
     Size sz = Size(mxx-mnx, mxy-mny);
-    vector<Point> centers;
-    vector<vector<Mat>> weight, img, band;
-    weight.resize(ord.size());
-    img.resize(ord.size());
-    band.resize(ord.size());
 
+    vector<vector<Mat>> weight, img, band;
+    vector<Point> centers(img_num);
+    weight.resize(img_num);
+    img.resize(img_num);
+    band.resize(img_num);
+    #pragma omp parallel for
     for (int i = 0; i < img_num; ++i) {
-      weight[i].resize(BAND_NUM);
+      weight[i].resize(_para[0]);
       weight[i][0] = Mat::zeros(sz, CV_64FC1);
-      img[i].resize(BAND_NUM);
-      band[i].resize(BAND_NUM);
-      int p = ord[i].first;
+      img[i].resize(_para[0]);
+      band[i].resize(_para[0]);
+      const int& p = ord[i].first;
       shift[p][p].at<double>(0, 2) -= mnx;
       shift[p][p].at<double>(1, 2) -= mny;
       imgs[p].convertTo(img[i][0], CV_64FC3);
+      Point2d pt1, pt2; tie(pt1, pt2) = get_corner(shift[p][p], imgs[p]);
       Mat mask;
       warpPerspective(img[i][0], img[i][0], shift[p][p], sz);
       threshold(img[i][0], mask, 0, 1, THRESH_BINARY);
@@ -157,11 +158,11 @@ void BLENDING::multi_band() {
         ymin = (y < ymin) ? y : ymin;
         ymax = (y > ymax) ? y : ymax;
       }
-      centers.push_back(Point((xmin+xmax)/2, (ymin+ymax)/2));
+      centers[i] = {(xmin+xmax)/2, (ymin+ymax)/2};
     }
-
-    for (int x = 0, xn = weight[0][0].cols; x < xn; ++x)
-    for (int y = 0, yn = weight[0][0].rows; y < yn; ++y) {
+    #pragma omp parallel for collapse(2)
+    for (int x = 0; x < weight[0][0].cols; ++x)
+    for (int y = 0; y < weight[0][0].rows; ++y) {
       int n, d, dmin = INT_MAX;
       for (int i = 0; i < img_num; ++i) {
         d = pow(x - centers[i].x, 2) + pow(y - centers[i].y, 2);
@@ -169,50 +170,45 @@ void BLENDING::multi_band() {
       }
       weight[n][0].at<double>(y,x) = 1;
     }
-
     #pragma omp parallel for
     for (int i = 0; i < img_num; ++i) {
       auto &p = img[i], &b = band[i], &w = weight[i];
       GaussianBlur(w[0], w[0], Size(0,0), SIGMA, SIGMA);
-      for (int lev = 1; lev < BAND_NUM; ++lev) {
-        GaussianBlur(p[lev-1], p[lev], Size(0,0), sqrt(2*lev-1)*SIGMA, sqrt(2*lev-1)*SIGMA);
-        GaussianBlur(w[lev-1], w[lev], Size(0,0), sqrt(2*lev+1)*SIGMA, sqrt(2*lev+1)*SIGMA);
+      for (int lev = 1; lev < _para[0]; ++lev) {
+        GaussianBlur(p[lev-1], p[lev], Size(0,0), sqrt(2*lev-1)*SIGMA, 
+                     sqrt(2*lev-1)*SIGMA);
+        GaussianBlur(w[lev-1], w[lev], Size(0,0), sqrt(2*lev+1)*SIGMA,
+                     sqrt(2*lev+1)*SIGMA);
         b[lev-1] = p[lev-1] - p[lev];
       }
-      b[BAND_NUM-1] = p[BAND_NUM-1].clone();
+      b[_para[0]-1] = p[_para[0]-1].clone();
     }
-
-
     Mat& show = outputs[pic];
     vector<Mat> res;
     show = Mat::zeros(sz, CV_64FC3);
-    for (int b = 0; b < BAND_NUM; ++b) 
+    for (int b = 0; b < _para[0]; ++b) 
       res.push_back(Mat::zeros(sz, CV_64FC3));
 
     #pragma omp parallel for
-    for (int b = 0; b < BAND_NUM; ++b) {
-      Mat sum = Mat::zeros(sz, CV_64FC1);
-      for (int i = 0; i < img_num; ++i) 
-      for (int x = 0, xn = weight[0][0].cols; x < xn; ++x)
-      for (int y = 0, yn = weight[0][0].rows; y < yn; ++y) {
-        res[b].at<Vec3d>(y,x) += (band[i][b].at<Vec3d>(y,x)) * weight[i][b].at<double>(y,x);
-        sum.at<double>(y,x) += weight[i][b].at<double>(y,x);
+    for (int b = 0; b < int(_para[0]); ++b) {
+      Mat sum = Mat::zeros(sz, CV_64FC3);
+      for (int i = 0; i < img_num; ++i) {
+        Mat weight3;
+        vector<Mat> weights(3, weight[i][b]);
+        merge(weights, weight3);
+        res[b] += band[i][b].mul(weight3);
+        sum += weight3;
       }
-      for (int i = 0; i < img_num; ++i) 
-      for (int x = 0, xn = weight[0][0].cols; x < xn; ++x)
-      for (int y = 0, yn = weight[0][0].rows; y < yn; ++y) {
-        res[b].at<Vec3d>(y,x) /= sum.at<double>(y,x);
-      }
+      divide(res[b], sum, res[b]);
     }
-
-    for (int b = 0; b < BAND_NUM; ++b)
+    for (int b = 0; b < _para[0]; ++b)
       show += res[b];
 
     /*
     Mat& show = outputs[pic];
     show = Mat::zeros(sz, CV_64FC3);
 
-    for (int b = 0; b < BAND_NUM; ++b) {
+    for (int b = 0; b < _para[0]; ++b) {
       Mat res = Mat::zeros(sz, CV_64FC1);
       Mat sum = Mat::zeros(sz, CV_64FC1);
       for (int i = 0; i < img_num; ++i) 

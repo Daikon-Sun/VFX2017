@@ -14,7 +14,7 @@ pair<double, double> PROJECTION::projected_xy(size_t i, double w, double h,
                                               double x, double y) {
   Point2d p1 = {_para[0]*atan((x-w/2)/_para[0]) + w/2, 
                 _para[0]*(y-h/2)/sqrt(_para[0]*_para[0]+(x-w/2)*(x-w/2)) + h/2};
-  double&& para = (double)imgs[i].cols / imgs[i].rows * _para[0];
+  double&& para = (double)imgs[i].rows / imgs[i].cols * _para[0];
   return {para*(p1.x-w/2)/sqrt(para*para+(p1.y-h/2)*(p1.y-h/2))+w/2,
           para*atan((p1.y-h/2)/para) + h/2};
 }

@@ -76,8 +76,8 @@ int parse(int ac, char** av) {
        value<int>(&stitching_mode)->default_value(stitching_mode),
        "modes of image stitching:\n"
        "  0: \ttranslation\n"
-       "  1: \ttranslation + estimate focal length\n"
-       "  2: \ttranslation + rotation\n"
+       "  1: \ttranslation + estimate focal length (deprecated)\n"
+       "  2: \ttranslation + rotation (deprecated)\n"
        "  3: \thomography\n"
        "  4: \tautomatic stitching")
       ("stitching_para", 

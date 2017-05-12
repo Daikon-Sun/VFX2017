@@ -105,13 +105,12 @@ void BLENDING::average() {
     show.convertTo(show, CV_8UC3);
   }
 }
+constexpr int BAND_NUM = 5;
+constexpr int SIGMA = 5;
 void BLENDING::multi_band() {
   cerr << __func__;
   int pic_num = order.size();
   outputs.resize(pic_num);
-
-  int BAND_NUM = 5;
-  int SIGMA = 5;
 
   for (int pic = 0; pic < pic_num; ++pic) {
     const auto& ord = order[pic];
@@ -181,7 +180,6 @@ void BLENDING::multi_band() {
       }
       b[BAND_NUM-1] = p[BAND_NUM-1].clone();
     }
-
 
     Mat& show = outputs[pic];
     vector<Mat> res;

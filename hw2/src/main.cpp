@@ -17,7 +17,7 @@ vector<string> all_matching = {"exhaustive search",
 vector<string> all_projection = {"none", "cylindrical"};
 vector<string> all_stitching = {"translation", "focal-length", "rotation",
                                 "homography", "autostitch"};
-vector<string> all_blending = {"average"};
+vector<string> all_blending = {"average", "multi-band"};
 
 int panorama_mode = 0;
 int detection_mode = 0;

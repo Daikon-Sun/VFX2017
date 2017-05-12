@@ -1,3 +1,4 @@
+input_image/pic-1.jpg
 input_image/pic-2.jpg
 input_image/pic-3.jpg
 input_image/pic-4.jpg

@@ -30,7 +30,7 @@ All Available Options in VFX2017 hw2 project:
                                         (Images for will be named as: 
                                         out_prefix0.jpg, out_prefix1.jpg...).
   -v [ --verbose ] [=arg(=True)]        Visualize the final result.
-  -z [ --zoom ] arg (=0.29999999999999999)
+  -z [ --zoom ] arg (=0.25)
                                         Scale the image according to this value
                                         before processing to achieve faster 
                                         result and use lesser memory. For 
@@ -97,6 +97,6 @@ All Available Options in VFX2017 hw2 project:
                                           0: NONE
                                           1: (0, number of bands)
 ```
-For example, `./main -i input_images.txt -o result/out -v -p 1 -d 1 -m 2 -j 1 
---projection_para 2000 -s 4 --stitching_para 5 2000 --blending_para 4` will be 
-a valid input. This is also the default value is you simple typed `./main`.
+For example, `./main -i input_images.txt -o result/out -z 0.25 -p 1 -d 1 -m 2
+-j 1 --projection_para 2000 -s 4 --stitching_para 5 2000 --blending_para 4` will 
+be a valid input. This is also the default value is you simple typed `./main`.

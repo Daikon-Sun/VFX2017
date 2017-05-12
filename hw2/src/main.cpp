@@ -42,7 +42,7 @@ string in_list = "input_images.txt";
 string out_prefix = "result/out";
 int detection = 0;
 bool verbose = true;
-double zoom = 0.3;
+double zoom = 0.25;
 
 int main(int argc, char** argv) {
   srand(time(NULL));

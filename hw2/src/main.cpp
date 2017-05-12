@@ -41,7 +41,7 @@ vector<int> blending_cnt = {0, 1};
 string in_list = "input_images.txt";
 string out_prefix = "result/out";
 int detection = 0;
-bool verbose = true;
+bool verbose = false;
 double zoom = 0.25;
 
 int main(int argc, char** argv) {

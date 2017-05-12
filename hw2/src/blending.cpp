@@ -105,7 +105,7 @@ void BLENDING::average() {
     show.convertTo(show, CV_8UC3);
   }
 }
-constexpr int BAND_NUM = 5;
+constexpr int BAND_NUM = 3;
 constexpr int SIGMA = 5;
 void BLENDING::multi_band() {
   cerr << __func__;
@@ -140,7 +140,7 @@ void BLENDING::multi_band() {
       weight[i][0] = Mat::zeros(sz, CV_64FC1);
       img[i].resize(BAND_NUM);
       band[i].resize(BAND_NUM);
-      int p = ord[i].first;
+      const int& p = ord[i].first;
       shift[p][p].at<double>(0, 2) -= mnx;
       shift[p][p].at<double>(1, 2) -= mny;
       imgs[p].convertTo(img[i][0], CV_64FC3);
@@ -176,13 +176,14 @@ void BLENDING::multi_band() {
       auto &p = img[i], &b = band[i], &w = weight[i];
       GaussianBlur(w[0], w[0], Size(0,0), SIGMA, SIGMA);
       for (int lev = 1; lev < BAND_NUM; ++lev) {
-        GaussianBlur(p[lev-1], p[lev], Size(0,0), sqrt(2*lev-1)*SIGMA, sqrt(2*lev-1)*SIGMA);
-        GaussianBlur(w[lev-1], w[lev], Size(0,0), sqrt(2*lev+1)*SIGMA, sqrt(2*lev+1)*SIGMA);
+        GaussianBlur(p[lev-1], p[lev], Size(0,0), sqrt(2*lev-1)*SIGMA, 
+                     sqrt(2*lev-1)*SIGMA);
+        GaussianBlur(w[lev-1], w[lev], Size(0,0), sqrt(2*lev+1)*SIGMA,
+                     sqrt(2*lev+1)*SIGMA);
         b[lev-1] = p[lev-1] - p[lev];
       }
       b[BAND_NUM-1] = p[BAND_NUM-1].clone();
     }
-
     Mat& show = outputs[pic];
     vector<Mat> res;
     show = Mat::zeros(sz, CV_64FC3);

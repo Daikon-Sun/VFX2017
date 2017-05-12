@@ -176,12 +176,13 @@ void MATCHING::FLANN() {
         if(matches[i].distance < min_dist) min_dist = matches[i].distance;
       vector<DMatch> good_matches;
       for(int i = 0; i<descs[p1].rows; ++i)
-        if(matches[i].distance <= max(1.4*min_dist, 5.0))
+        if(matches[i].distance <= max(1.3*min_dist, 5.0))
           good_matches.push_back(matches[i]);
       for(auto& match : good_matches)
         match_pairs[p1][p2].emplace_back(match.queryIdx, match.trainIdx);
       if(!panorama_mode) break;
     }
+  //show_match();
 }
 bool MATCHING::check_match_haar(const tuple<int, int, double>& mp, 
                            size_t p1, size_t p2, double sec_mn) const {

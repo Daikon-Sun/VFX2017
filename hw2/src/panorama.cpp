@@ -41,7 +41,7 @@ PANORAMA::PANORAMA(const string& in_list, const string& out_prefix,
   string fname;
   while(ifs >> fname) {
     Mat tmp = imread(fname, IMREAD_COLOR);
-    resize(tmp, tmp, Size(), 0.2, 0.2);
+    resize(tmp, tmp, Size(), 0.1, 0.1);
     _imgs.push_back(tmp.clone());
   }
 };

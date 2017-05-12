@@ -385,7 +385,7 @@ void STITCHING::autostitch() {
       Solver::Options options;
       options.max_num_iterations = max_iter;
       options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-      options.minimizer_progress_to_stdout = true;
+      options.minimizer_progress_to_stdout = false;
       Solver::Summary summary;
       for(size_t iter = 0; iter < tot_iter; ++iter) {
         Solve(options, &problem, &summary);
@@ -394,14 +394,14 @@ void STITCHING::autostitch() {
             ceres::TAKE_OWNERSHIP
         );
       }
-      cerr << summary.FullReport() << endl;
+      //cerr << summary.FullReport() << endl;
     }
-    for(size_t i = 0; i<pic_num; ++i) {
-      cerr << i << endl;
-      for(size_t j = 0; j<3; ++j) cerr << R[i][j] << " ";
-      cerr << K[i][0] << endl;
-      cerr << "#####################" << endl;
-    }
+    //for(size_t i = 0; i<pic_num; ++i) {
+    //  cerr << i << endl;
+    //  for(size_t j = 0; j<3; ++j) cerr << R[i][j] << " ";
+    //  cerr << K[i][0] << endl;
+    //  cerr << "#####################" << endl;
+    //}
   }
   vector<Mat> Rs(pic_num), Ks(pic_num), R_Ts(pic_num);
   #pragma omp parallel for

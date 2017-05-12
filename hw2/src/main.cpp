@@ -19,24 +19,24 @@ vector<string> all_stitching = {"translation", "focal-length", "rotation",
                                 "homography", "autostitch"};
 vector<string> all_blending = {"average", "multi-band"};
 
-int panorama_mode = 0;
-int detection_mode = 0;
+int panorama_mode = 1;
+int detection_mode = 1;
 
 int matching_mode = 1;
 Paras all_matching_para = {{50}, {10, 0.65, 50}, {}};
 vector<int> matching_cnt = {0, 3, 0};
 
 int projection_mode = 1;
-Paras all_projection_para = {{}, {700}};
+Paras all_projection_para = {{}, {1500}};
 vector<int> projection_cnt = {0, 1};
 
-int stitching_mode = 0;
-Paras all_stitching_para = {{5000, 2}, {5000, 2}, {5000, 2}, {10}, {5, 520}};
+int stitching_mode = 4;
+Paras all_stitching_para = {{1000, 2}, {1000, 2}, {1000, 2}, {10}, {5, 2000}};
 vector<int> stitching_cnt = {2, 2, 2, 1, 2};
 
 int blending_mode = 1;
-Paras all_blending_para = {{}, {}};
-vector<int> blending_cnt = {0, 0};
+Paras all_blending_para = {{}, {4}};
+vector<int> blending_cnt = {0, 1};
 
 string in_list = "input_images.txt";
 string out_prefix = "result/out";

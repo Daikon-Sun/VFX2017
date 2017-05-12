@@ -37,31 +37,41 @@ int parse(int ac, char** av) {
 	desc.add_options()
 			("help,h", "Print help message.")
       ("in_list,i", value<string>(&in_list)->default_value(in_list),
-       "List of all input images.")
+       "List of all input images. (Image names should be seperated by any "
+       "spaces.)")
       ("out_prefix,o", value<string>(&out_prefix)->default_value(out_prefix),
        "Output prefix of the panorama images.")
       ("verbose,v", value<bool>()
        ->implicit_value(verbose, verbose?"True":"False")->composing(),
-       "Show the final result.")
+       "Visualize the final result.")
       ("panorama,p",
        value<int>(&panorama_mode)->default_value(panorama_mode),
        "modes of generating panorama:\n"
-       "  0: \tlinear ordering(n)\n"
-       "  1: \tany ordering(n^2)")
+       "  0: \tlinear ordering(n) (The program will stitch the images according"
+              " to the order in \"in_list\" one after one from left to right\n"
+       "  1: \tany ordering(n^2) (The program will automatically stitch "
+              "the images in any order and recognise all scenes to produce one "
+              "panorama for a single scene\n")
+
       ("detection,d",
        value<int>(&detection_mode)->default_value(detection_mode),
        "modes of feature detection:\n"
-       "  0: \tMSOP\n"
-       "  1: \tSIFT\n\n")
+       "  0: \tMSOP (Multi-Scale Oriented Patches\n"
+       "  1: \tSIFT (Scale Invariant Feature Transform\n\n")
 
       ("matching,m",
        value<int>(&matching_mode)->default_value(matching_mode),
        "modes of feature matching:\n"
        "  0: \texhaustive search\n"
-       "  1: \tHAAR wavelet-based hashing")
+       "  1: \tHAAR wavelet-based hashing\n"
+       "  2: \tFLANN (Fast Library for Approximate Nearest Neighbors")
       ("matching_para",
        value< vector<double> >(&matching_para)->multitoken(),
-       "Parameters of the chosen feature matching mode.\n\n")
+       "Parameters of the chosen feature matching mode.\n"
+       "  0: (0, maximum y-coordinate displacement for geometric constraint)\n"
+       "  1: (0, bin number), (1, threshold between 1-NN / (avg 2-NN))\n"
+              "(2, maximum y-coordinate displacement for geometric constraint)\n"
+       "  2: NONE\n\n")
       
       ("projection,j",
        value<int>(&projection_mode)->default_value(projection_mode),
@@ -70,7 +80,9 @@ int parse(int ac, char** av) {
        "  1: \tcylindrical")
       ("projection_para",
        value< vector<double> >(&projection_para)->multitoken(),
-       "Parameters of the chosen projection type.\n\n")
+       "Parameters of the chosen projection type.\n"
+       "  0: NONE\n"
+       "  1: (0, focal length)\n\n")
 
       ("stitching,s",
        value<int>(&stitching_mode)->default_value(stitching_mode),
@@ -82,21 +94,31 @@ int parse(int ac, char** av) {
        "  4: \tautomatic stitching")
       ("stitching_para", 
        value< vector<double> >(&stitching_para)->multitoken(),
-       "Parameters of the chosen image stitching mode.\n\n")
+       "Parameters of the chosen image stitching mode.\n"
+       "  0: (0, number of rounds for RANSAC), (1, threshold of inliner/"
+              "outlier)\n"
+       "  3: (0, threshold of inliner/ouliear)\n"
+       "  4: (0, threshold of inliner/ouliear), (1, estimated focal length "
+              "(nonzero) for initialization of bundle adjustment)\n\n")
 
       ("blending,b",
        value<int>(&blending_mode)->default_value(blending_mode),
        "modes of blending:\n"
-       "  0: \taverage\n"
-       "  1: \tmulti-band");
+       "  0: \taverage (simple average of overlapping region)\n"
+       "  1: \tmulti-band")
+      ("blending_para",
+       value< vector<double> >(&blending_para)->multitoken(),
+       "Parameters of the chosen blending mode.\n"
+       "  0: NONE\n"
+       "  1: (0, number of bands)");
 
-	variables_map vm;
-	store(parse_command_line(ac, av, desc), vm);
-	notify(vm);
-	if(vm.count("help")) {
-			cout << desc << endl;
-			return 0;
-	}
+  variables_map vm;
+  store(parse_command_line(ac, av, desc), vm);
+  notify(vm);
+  if(vm.count("help")) {
+    cout << desc << endl;
+    return 0;
+  }
   if(vm.count("matching_para")) {
     if(!check(matching_para, all_matching[matching_mode], 
               matching_cnt[matching_mode], "matching_para"))
@@ -121,8 +143,6 @@ int parse(int ac, char** av) {
       return -1;
     all_blending_para[blending_mode] = blending_para;
   }
-
   verbose |= vm.count("verbose");
-
   return 1;
 }

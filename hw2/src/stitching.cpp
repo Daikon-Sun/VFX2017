@@ -396,12 +396,12 @@ void STITCHING::autostitch() {
       }
       //cerr << summary.FullReport() << endl;
     }
-    //for(size_t i = 0; i<pic_num; ++i) {
-    //  cerr << i << endl;
-    //  for(size_t j = 0; j<3; ++j) cerr << R[i][j] << " ";
-    //  cerr << K[i][0] << endl;
-    //  cerr << "#####################" << endl;
-    //}
+    for(size_t i = 0; i<pic_num; ++i) {
+      cerr << i << endl;
+      for(size_t j = 0; j<3; ++j) cerr << R[i][j] << " ";
+      cerr << K[i][0] << endl;
+      cerr << "#####################" << endl;
+    }
   }
   vector<Mat> Rs(pic_num), Ks(pic_num), R_Ts(pic_num);
   #pragma omp parallel for

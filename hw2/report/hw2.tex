@@ -12,6 +12,8 @@
 \usepackage{amssymb}
 \usepackage{tikz}
 \usepackage{pgfplots}
+\usepackage{amsmath}
+\usepackage{stix}
 
 \pgfplotsset{compat=1.13}
 \definecolor{dkgreen}{rgb}{0,0.6,0}
@@ -145,7 +147,30 @@ For feature matching, we have implemented exhaustive search and  Haar wavelet-ba
 Rectilinear projection may cause dramatic distortion when stitching images, so cylindrical projection is applied to fix the problem. In our case, simply doing cylindrical projection cannot smoothen intersection connectivities enough when stitching. To fix the problem, we apply cylindrical projection in both vertical and horizontal direction.
 
 \subsection{Image Stitching}
-
+We assume that our camera rotates about its optical center.  Under this assumption, the images may undergo a special group of homographies.
+According to \cite{ref:panorama0}\cite{ref:panorama1}, we parameterise each camera by a rotation vector $\boldsymbol{\theta} = [\theta_1, \theta_2, \theta_3]$ and focal length $f$.This gives pairwise homographies $$\tilde{\boldsymbol{u}_i} = \boldsymbol{H}_{ij}\tilde{\boldsymbol{u}_j}$$ 
+where $$\boldsymbol{H}_{ij} = \boldsymbol{K}_i\boldsymbol{R}_i\boldsymbol{R}^T_j\boldsymbol{K}^{-1}_j$$ $$\tilde{\boldsymbol{u}_i} = s_i[\boldsymbol{u}_i, 1]$$ 
+and $\tilde{\boldsymbol{u}_i}$, $\tilde{\boldsymbol{u}_j}$ are the homogeneous image positions. \\
+The four parameters camera model is defined by:
+$$\boldsymbol{K}_i = \begin{bmatrix} 
+  f_i &   0 & 0 \\ 
+    0 & f_i & 0 \\ 
+    0 &   0 & 1 \end{bmatrix}$$
+and using the exponential map (in this case a matrix exponential) to transform an axis-angle representation of rotations to a rotation matrix by:
+$$\boldsymbol{R}_i = e^{[\boldsymbol{\theta}_i]_{\times}},\ 
+[\boldsymbol{\theta}_i]_{\times} = \begin{bmatrix} 
+  0 & -\theta_{i3} & \theta_{i2} \\
+  \theta_{i3} & 0 & -\theta_{i1} \\
+-\theta_{i2} & \theta_{i1} & 0 \end{bmatrix}$$
+Since $[\boldsymbol{\theta}_i]_{\times}$ is a skew symetric matrix, the exponential of it can be shortly formulated as:
+$$\boldsymbol{R}_i = 
+\boldsymbol{I} + 
+sin({||\boldsymbol{\theta}_i||}_2)[\boldsymbol{\theta}_i]_{\times} +
+(1-cos({||\boldsymbol{\theta}_i||}_2))[\boldsymbol{\theta}_i]^2_{\times}$$
+Using this formula, we can perform bundle adjustment by Levenberg-Marquardt algorithm with the aid of Ceres, which can perform automatic derivatives.
+Reference from \cite{ref:panorama0} and \cite{ref:panorama1}, the error function is defined as:
+$$e = \sum\limits_{i=1}^n\sum\limits_{j \in \mathscr{I}(i)}\sum\limits_{k \in \mathscr{F}(i,j)}\ h(\boldsymbol{r}^{kl}_{ij})$$
+where $n$ is the number of images, $\mathscr{I}(i)$ is the set of images matching to image $i$, $\mathscr{F}(i, j)$ is the set of feature matches between images $i$ and $j$, and $\boldsymbol{r}^{kl}_{ij}$ is the residual between a correspondence of the $k$th feature in image $i$ and $l$th feature in image $j$. We also use the Huber robust error function and set $\sigma = \infty$ during initialization and $\sigma = 2$ pixels for the final solution.
 \subsection{Blending}
 Converting the image into high and low frequency images, multi-band blending shows a good recovery for edge connection. The algorithm is shown below.
 

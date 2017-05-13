@@ -59,7 +59,7 @@
 \begin{document}
 \maketitle
 \section{Description}
-In this project, we construct panoramas from a series of photographs. Run through following feature-based process in the order to create panoramas \cite{ref:panorama}.
+In this project, we construct panoramas from a series of photographs. Run through following feature-based process in the order to create panoramas \cite{ref:panorama0} \cite{ref:panorama1}.
 \begin{itemize}
   \itemsep=0pt
   \item Feature detection: scale invariant feature transform (SIFT) or multi-scale oriented patches (MSOP), with the aid of exhaustive search.
@@ -167,10 +167,23 @@ $$\boldsymbol{R}_i =
 \boldsymbol{I} + 
 sin({||\boldsymbol{\theta}_i||}_2)[\boldsymbol{\theta}_i]_{\times} +
 (1-cos({||\boldsymbol{\theta}_i||}_2))[\boldsymbol{\theta}_i]^2_{\times}$$
-Using this formula, we can perform bundle adjustment by Levenberg-Marquardt algorithm with the aid of Ceres, which can perform automatic derivatives.
+Using this formula, we can perform bundle adjustment by Levenberg-Marquardt algorithm with the aid of Ceres, which can perform automatic derivatives.\\
 Reference from \cite{ref:panorama0} and \cite{ref:panorama1}, the error function is defined as:
 $$e = \sum\limits_{i=1}^n\sum\limits_{j \in \mathscr{I}(i)}\sum\limits_{k \in \mathscr{F}(i,j)}\ h(\boldsymbol{r}^{kl}_{ij})$$
 where $n$ is the number of images, $\mathscr{I}(i)$ is the set of images matching to image $i$, $\mathscr{F}(i, j)$ is the set of feature matches between images $i$ and $j$, and $\boldsymbol{r}^{kl}_{ij}$ is the residual between a correspondence of the $k$th feature in image $i$ and $l$th feature in image $j$. We also use the Huber robust error function and set $\sigma = \infty$ during initialization and $\sigma = 2$ pixels for the final solution.
+\begin{figure}[!ht]
+  \centering
+   \subcaptionbox{with only translation}{
+    \includegraphics[width=.7\linewidth,clip]{{translation}.png}
+   }
+   \subcaptionbox{with bundle adjustment}{
+     \includegraphics[width=.7\linewidth,clip]{{bundle}.png}
+   }
+   \caption{Results of bundle adjustment with average blending}
+   \label{fig:bundle-adjustment}
+\end{figure}
+
+
 \subsection{Blending}
 Converting the image into high and low frequency images, multi-band blending shows a good recovery for edge connection. The algorithm is shown below.
 
@@ -205,6 +218,17 @@ Converting the image into high and low frequency images, multi-band blending sho
 \end{algorithmic}
 \end{algorithm}
 
+\begin{figure}[!ht]
+  \centering
+   \subcaptionbox{with average blending}{
+     \includegraphics[width=.8\linewidth,trim={5cm 15cm 5cm 26cm},clip]{{average}.jpg}
+   }
+   \subcaptionbox{with multi-band blending}{
+     \includegraphics[width=.8\linewidth,trim={5cm 15cm 5cm 26cm},clip]{{multi-band}.jpg}
+   }
+   \caption{Results of multi-band blending compare to average blending.}
+   \label{fig:multi-blending}
+\end{figure}
 
 \section{Reference}
 \bibliographystyle{unsrt}

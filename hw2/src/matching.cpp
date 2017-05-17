@@ -179,7 +179,10 @@ void MATCHING::FLANN() {
         if(matches[i].distance <= max(1.3*min_dist, 5.0))
           good_matches.push_back(matches[i]);
       for(auto& match : good_matches)
-        match_pairs[p1][p2].emplace_back(match.queryIdx, match.trainIdx);
+        if(check_match_exhaustive(match.queryIdx, match.trainIdx, p1, p2)
+           && is_align(keypoints[p1][match.queryIdx], 
+                       keypoints[p2][match.trainIdx], 100))
+          match_pairs[p1][p2].emplace_back(match.queryIdx, match.trainIdx);
       if(!panorama_mode) break;
     }
   //show_match();

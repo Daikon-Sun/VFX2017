@@ -31,7 +31,7 @@ Paras all_projection_para = {{}, {1500}};
 vector<int> projection_cnt = {0, 1};
 
 int stitching_mode = 4;
-Paras all_stitching_para = {{1000, 2}, {1000, 2}, {1000, 2}, {10}, {5, 2000}};
+Paras all_stitching_para = {{1000, 2}, {1000, 2}, {1000, 2}, {10}, {10, 2000}};
 vector<int> stitching_cnt = {2, 2, 2, 1, 2};
 
 int blending_mode = 1;

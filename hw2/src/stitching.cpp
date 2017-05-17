@@ -300,7 +300,7 @@ void STITCHING::gen_order() {
   for(size_t i = 0; i<pic_num; ++i) {
     cnt_all[i].second = i;
     sort(in_cnt[i].begin(), in_cnt[i].end(), greater<pair<int,int>>()); 
-    for(size_t j = 0; j<M && j<in_cnt[i].size(); ++j) if(i != j) {
+    for(size_t j = 0; j<M && j<in_cnt[i].size(); ++j) {
       int p1 = i, p2 = in_cnt[i][j].second;
       if(p1 > p2) swap(p1, p2);
       if(in_cnt[i][j].first > 5.9+0.22*match_pairs[p1][p2].size()) {

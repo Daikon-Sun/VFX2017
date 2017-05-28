@@ -1,0 +1,88 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,  margin=1in]{geometry}
+\usepackage{enumitem}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{algorithm}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
+\usepackage{listings}
+\usepackage{amssymb}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{amsmath}
+\usepackage{stix}
+\usepackage{hyperref}
+\usepackage{url}
+
+\pgfplotsset{compat=1.13}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{codebg}{rgb}{0.95,0.95,0.9}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=tb,
+  rulecolor=\color{codebg},
+  backgroundcolor=\color{codebg},
+  language=C++,
+  aboveskip=3mm,
+  belowskip=-0.5mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  morekeywords={vector},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3
+}
+
+\maxdeadcycles=100
+
+\graphicspath{{pic/}}
+\setlength\parskip{6pt}
+\setlength\parindent{0pt}
+\setlength\intextsep{9pt}
+\linespread{1}
+\renewcommand{\refname}{\vspace{-30pt}}
+\renewcommand\floatpagefraction{0.85}
+\newcommand*{\equal}{=}
+
+\title{\bf{VFX Project 3\\\large{MatchMove}}\vspace{-10pt}}
+\author{B03901056 Fan-Keng Sun, B03901119 Shang-Wei Chen}
+\date{2017/5/31}
+  
+\begin{document}
+\maketitle
+\section{Description}
+In this project, we aim at producing a video with computer generated imagery (CGI) that are inserted seamlessly with the aid of tools.
+\begin{itemize}
+  \itemsep=0pt
+  \item Video shooting: 
+  \item Calibration or structure-from-motion:
+  \item Add CGI:
+  \item Video editing:
+\end{itemize}
+\section{Implementation}
+\subsection{Environment}
+\begin{itemize}
+  \itemsep=0pt
+  \item Video Recorder:
+  \item OS: Linux (Archlinux 4.10, Ubuntu 16.04)
+  \item Tools/Libraries: Voodoo Camera Tracker v1.2.0 beta \cite{ref:voodoo}, Blender v2.6.2 \cite{ref:blender}
+\end{itemize}
+
+\subsection{Video shooting}
+\subsection{Calibration or structure-from-motion}
+\subsection{Add CGI}
+\subsection{Video editing}
+\section{Reference}
+\bibliographystyle{unsrt}
+\bibliography{hw3}
+\end{document}

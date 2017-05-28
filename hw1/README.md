@@ -85,7 +85,7 @@ produce high-dynamic images. If `method 0` is chosen, beware of `hdr_para` and `
 contrary, beware of `fusion_para` during `exposure fusion`.
 ### Make sure the followings are in the in_dir:
 - A txt file named `input.txt` which looks like:
-```
+``
 15
 pic1.JPG 0.25
 pic2.JPG 2

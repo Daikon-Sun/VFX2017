@@ -1,5 +1,5 @@
 \documentclass[11pt]{article}
-\usepackage[a4paper,  margin=1in]{geometry}
+\usepackage[a4paper,  margin=.8in]{geometry}
 \usepackage{enumitem}
 \usepackage{color}
 \usepackage{graphicx}
@@ -65,9 +65,9 @@ In this project, we aim at producing a \textbf{ghostly} video with computer gene
 \begin{itemize}
   \itemsep=0pt
   \item Video shooting: Chih-Hung Hall
-  \item Calibration or structure-from-motion: Video Copilot
-  \item Add CGI:
-  \item Video editing:
+  \item Calibration or structure-from-motion: Tracker
+  \item Add CGI: Video Copilot Element 3D
+  \item Video editing: Coloring, Sound
 \end{itemize}
 \section{Implementation}
 \subsection{Environment}
@@ -75,20 +75,29 @@ In this project, we aim at producing a \textbf{ghostly} video with computer gene
   \itemsep=0pt
   \item Video Recorder: Sony Alpha 6000
   \item OS: Windows 10 Enterprise
-  \item Tools/Libraries: Adobe After Effects \cite{ref:AE}, Video Copilot \cite{ref:copilot}, Voodoo Camera Tracker v1.2.0 beta \cite{ref:voodoo}, Blender v2.6.2 \cite{ref:blender}
+  \item Tools/Libraries: Adobe After Effects (AE) \cite{ref:AE}, Video Copilot Element 3D \cite{ref:copilot}
 \end{itemize}
 
 \subsection{Video shooting}
 Since we want to produce ghostly video, we thought that Chih-Hung Hall, which is a basically a ruin nowadays, is a convenient and satisfactory place. So we went to the Chih-Hung Hall to shoot some messy, spooky and eerie scenes, as shown in Fig. \ref{fig:Chih-Hung}.
+\subsection{Calibration or structure-from-motion}
+After shooting the scene, we use Tracker in AE to find features and annotates key points. Tracker will help us keep track of these points when the view of the recorder changes.
+\subsection{Add CGI}
+Every three Delaunay points among the key points will form a plane where we can place CGI on it. We downloaded CGIs from the Internet with only 3D geometry structure, and then utilizes Copilot to fill in the texture.  Then, after selecting an adequate location to place the CGI, transformations (scaling, rotation, etc,.) are performed to make the result natural. Next we add shadow by adding a flat, horizontal layer and let selected light projected onto the layer. However, CGIs are still quite different from the surrounding objects, especially at the border. So we tried a little bit of blur on the border of CGIs. In summary, we add a swinging chair, a Coca-Cola can (difficult to find) and a floating but funny ghost to the video.
+\subsection{Video editing}
+Until this step, the video is basically done. However, the color/hue of the entire video was not acceptible for such a ghostly scene. So we adjust the color/hue to make it much more scary. The final appearance is shown in Fig. \ref{fig:shot1}. Also, we add creepy background music to complete the whole video.
 \begin{figure}[!ht]
   \centering
-   \includegraphics[width=1\linewidth]{{Chih-Hung}.png}
+  \includegraphics[width=1\linewidth,trim={0 4.7cm 0 4.7cm},clip]{{Chih-Hung}.png}
    \caption{A scene in the Chih-Hung Hall}
    \label{fig:Chih-Hung}
 \end{figure}
-\subsection{Calibration or structure-from-motion}
-\subsection{Add CGI}
-\subsection{Video editing}
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=1\linewidth,trim={0 3.2cm 0 3.2cm},clip]{{shot1}.png}
+   \caption{After adding CGI and coloring}
+   \label{fig:shot1}
+\end{figure}
 \section{Reference}
 \bibliographystyle{unsrt}
 \bibliography{hw3}
